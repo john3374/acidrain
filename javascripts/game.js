@@ -1,19 +1,21 @@
-const domElpased = document.getElementById('elapsed');
-const domInput = document.getElementById('gameInput');
-const domText = document.getElementById('footer-input');
-const domLife = document.getElementById('life');
-const domGame = document.getElementById('game');
-const domScore = document.getElementById('score');
-const domCorrect = document.getElementById('correct');
-const domWrong = document.getElementById('wrong');
-const domAccuracy = document.getElementById('accuracy');
-const domGameover = document.getElementById('gameover-container');
-const domGameoverText = document.getElementById('gameover');
-const domClose = document.getElementById('btnClose');
-const domTitle = document.getElementById('titleText');
+const getByID = id => document.getElementById(id);
+const domElpased = getByID('elapsed');
+const domInput = getByID('gameInput');
+const domText = getByID('footer-input');
+const domLife = getByID('life');
+const domGame = getByID('game');
+const domScore = getByID('score');
+const domCorrect = getByID('correct');
+const domWrong = getByID('wrong');
+const domAccuracy = getByID('accuracy');
+const domGameover = getByID('gameover-container');
+const domGameoverText = getByID('gameover');
+const domClose = getByID('btnClose');
+const domTitle = getByID('titleText');
 const ctx = domGame.getContext('2d');
+const defaultWords = ['커다랗다', '산들바람', '바로잡다', '꽁지', '셈틀', '덩달다', '길쭉하다', '담빡', '삐죽이', '무럭무럭'];
 let secOffset = 1000, time = 0, life = 18, correct = 0, wrong = 0, level = 1, score = 10, nextLevel = 26;
-let words = [], wordQueue = ['커다랗다', '산들바람', '바로잡다', '꽁지', '셈틀', '덩달다', '길쭉하다', '담빡', '삐죽이', '무럭무럭'];
+let words = [], wordQueue = defaultWords;
 let wordIdx = 0, dropRain = true, lastTime = 0, running = true, isGame = true, genSkipped = 0;
 
 const elapsedTimer = setInterval(() => {
@@ -78,13 +80,24 @@ const gameLoop = () => {
 };
 
 const endGame = () => {
-  isGame = false;
-  clearInterval(elapsedTimer);
-  showPopup('놀이가 끝났습니다.');
-  const req = new XMLHttpRequest();
-  req.open('POST', 'record.php', true);
-  req.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-  req.send(`score=${score}&correct=${correct}&wrong=${wrong}&time=${time}&level=${level}&name=이름 없음`);
+  if (isGame) {
+    isGame = false;
+    clearInterval(elapsedTimer);
+    showPopup('놀이가 끝났습니다.');
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'record.php', true);
+    xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+    xhr.send(`score=${score}&correct=${correct}&wrong=${wrong}&secret=${getByID('secret').value}&time=${time}&level=${level}&name=이름 없음`);
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState == 4) {
+        showScore(xhr.responseText);
+      }
+    }
+  }
+}
+
+const showScore = (data) => {
+  console.log(data);
 }
 
 const showPopup = (str) => {
@@ -107,7 +120,7 @@ const shuffleWords = async () => {
   req.onreadystatechange = (e) => {
     if (e.target.readyState === 4 && e.target.status === 200 && e.target.responseText)
       wordQueue = JSON.parse(e.target.responseText);
-    else wordQueue = ['커다랗다', '산들바람', '바로잡다', '꽁지', '셈틀', '덩달다', '길쭉하다', '담빡', '삐죽이', '무럭무럭'];
+    else wordQueue = defaultWords;
   };
   req.open('GET', 'morewords.php', true);
   req.send();
@@ -172,7 +185,7 @@ window.onload = () => {
       life = 0;
   });
   domInput.addEventListener('focusin', () => resumeGame());
-  domInput.addEventListener('focusout', () => showPopup('일 시 정 지'));
+  domInput.addEventListener('focusout', () => isGame ? showPopup('일 시 정 지') : 0);
   domGameover.addEventListener('click', () => resumeGame());
   shuffleWords();
   gameLoop();

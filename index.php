@@ -14,7 +14,7 @@ $_SESSION['secret'] = uniqid();
 </head>
 
 <body>
-   <input type="hidden" name="secret" value="<?php echo $_SESSION['secret'] ?>" />
+   <input type="hidden" id="secret" value="<?php echo $_SESSION['secret'] ?>" />
    <div class="title flow-text"><img class="logo" src="/images/title.png"><span id="titleText">한컴타자연습 (놀이마당 1)</span><button id="btnClose" class="right close-button">X</button></div>
    <div class="dashboard flow-text">
       <div class="stats"><span id="correct">정타:0</span><span id="wrong">오타:0</span><span id="accuracy">정확도:0%</span>

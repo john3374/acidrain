@@ -15,5 +15,14 @@ if ($_SESSION['secret'] && $_SERVER["REQUEST_METHOD"] == "POST") {
   $level = $_POST['level'];
   $stmt->execute();
   $stmt->close();
+  $_SESSION['secret'] = uniqid();
+  $result = $con->query('SELECT level, score, created FROM acidrain_record order by score desc limit 10');
+  if ($result->num_rows > 0) {
+    // output data of each row
+    while ($row = $result->fetch_assoc())
+      $ret[] = $row;
+    echo json_encode($ret);
+  } else
+    echo '[]';
   $con->close();
 }
