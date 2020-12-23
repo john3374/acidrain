@@ -10,17 +10,9 @@ cache:
 before_script:
   - bash ci/docker_install.sh > /dev/null
 
-# Bring in any services we need http://docs.gitlab.com/ee/ci/docker/using_docker_images.html#what-is-a-service
-# See http://docs.gitlab.com/ee/ci/services/README.html for examples.
-services:
-  - mysql:5.7
-
-# Set any variables we need
-variables:
-  # Configure mysql environment variables (https://hub.docker.com/r/_/mysql/)
-  MYSQL_DATABASE: mysql_database
-  MYSQL_ROOT_PASSWORD: mysql_strong_password
-
+stages:
+  - test
+  - deploy
 # Run our tests
 # If Xdebug was installed you can generate a coverage report and see code coverage metrics.
 test:
