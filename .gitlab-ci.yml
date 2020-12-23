@@ -15,12 +15,21 @@ before_script:
 
 stages:
   - build
+  - staging
   - deploy
 
 build:
   stage: build
   script:
     - echo "Building"
+
+staging:
+  stage: staging
+  tags:
+    - docker-stage
+  environment:
+    name: staging
+    url: stage.사.com
 
 deploy:
   stage: deploy
