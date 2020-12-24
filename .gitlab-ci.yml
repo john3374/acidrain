@@ -26,6 +26,6 @@ deploy_staging:
     - echo "Deploy to staging"
   environment:
     name: staging
-    url: https://staging.사.com
+    url: $CI_ENVIRONMENT_URL
   only:
     - master
