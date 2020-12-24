@@ -50,8 +50,8 @@ const gameUpdate = () => {
     lastTime = now;
   }
   if (correct >= nextLevel) {
-    nextLevel += 26 + 2 * level;
-    showPopup(`${++level}  놀 이 마 당`);
+    nextLevel += 26 + 2 * level++;
+    showPopup(`${level}  놀 이 마 당`);
     domTitle.innerHTML = `한컴타자연습 (놀이마당 ${level})`;
   }
 };
@@ -161,14 +161,16 @@ window.onload = () => {
     if (e.code === 'Space' || e.code === 'Enter') {
       if (domInput.value.trim() !== '') {
         let isCorrect = false;
-        for (let i in words)
-          if (words[i].word === domInput.value.trim()) {
-            score += words[i].sp ? 50 : 30;
+        for (let i in words) {
+          const w = words[i].word;
+          if (w === domInput.value.trim()) {
+            score +=  w.length * 10 + 20;
             delete words[i];
             words.splice(i, 1);
             isCorrect = true;
             break;
           }
+        }
         if (isCorrect) correct++;
         else wrong++;
         domScore.innerHTML = score;

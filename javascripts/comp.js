@@ -7,7 +7,8 @@ const closureCompiler = new ClosureCompiler({
   js: 'game.js',
   compilation_level: 'ADVANCED_OPTIMIZATIONS',
   js_output_file: 'game.min.js',
-  createSourceMap: 'game.map'
+  createSourceMap: 'game.map',
+  externs: 'x.js'
 });
 
 const compilerProcess = closureCompiler.run((exitCode, stdOut, stdErr) => {
