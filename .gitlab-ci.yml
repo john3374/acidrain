@@ -20,7 +20,12 @@ test:
   script:
     - vendor/bin/phpunit --configuration phpunit.xml --coverage-text --colors=never
 
-deploy:
+deploy_staging:
   stage: deploy
   script:
-    - echo "Deploy"
+    - echo "Deploy to staging"
+  environment:
+    name: staging
+    url: $CI_ENVIRONMENT_URL
+  only:
+    - master
