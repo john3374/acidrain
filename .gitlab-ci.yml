@@ -23,7 +23,7 @@ test:
 deploy_staging:
   stage: deploy
   script:
-    - echo "Deploy to staging"
+    - echo "Deploy to staging $CI_ENVIRONMENT_URL"
   environment:
     name: staging
     url: $CI_ENVIRONMENT_URL
