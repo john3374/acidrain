@@ -1,0 +1,13 @@
+const { Schema } = require('mongoose');
+
+const playerSchema = new Schema(
+  {
+    email: { type: String, unique: true, required: true },
+    nickname: { type: String, unique: true, default: '사용자' },
+  },
+  {
+    timestamps: { createdAt: 'created', updatedAt: 'updated' },
+    optimisticConcurrency: true,
+  }
+);
+module.exports = playerSchema;

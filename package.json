@@ -3,16 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 5000",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start -p 5000",
+    "lint": "next lint",
+    "wss": "node wss"
   },
   "dependencies": {
+    "@faker-js/faker": "^8.3.1",
+    "dotenv": "^16.3.1",
+    "memory-cache": "^0.2.0",
+    "mongoose": "^8.0.3",
     "next": "14.0.4",
-    "protobufjs": "^7.2.5",
+    "next-auth": "^4.24.5",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "reactjs-popup": "^2.0.6",
+    "socket.io": "^4.7.2",
+    "socket.io-client": "^4.7.2"
   },
   "devDependencies": {
     "autoprefixer": "^10.0.1",

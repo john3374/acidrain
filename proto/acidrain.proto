@@ -1,0 +1,6 @@
+syntax='proto3';
+
+message User {
+  string id = 1;
+  string nickname = 2;
+}
