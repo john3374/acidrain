@@ -29,18 +29,30 @@ class Game {
       console.log('failed to upsert game');
       console.log(err);
     });
+    client.on('game', word => {
+      console.log(client.gameId, word);
+      for (let i = 0; i < this.#position.length; i++) {
+        if (this.#position[i].word === word) {
+          this.#position.splice(i--, 1);
+          this.correct++;
+          this.score += word.length * 10 + 20;
+          client.emit('game', this.getState());
+          return;
+        }
+      }
+      this.incorrect++;
+      this.score--;
+      client.emit('game', this.getState());
+    });
   }
 
   #populateWords() {
-    Word.aggregate([{ $unwind: '$word' }, { $sample: { size: 20 } }, { $project: { _id: 0 } }]).then(words => {
-      this.words = words.map(w => w.word);
-      this.ready = true;
-      this.life = 18;
-      this.correct = 0;
-      this.incorrect = 0;
-      this.level = 1;
-      this.#client.emit('state', 'sReady');
-    });
+    if (!this.ready)
+      Word.aggregate([{ $unwind: '$word' }, { $sample: { size: 20 } }, { $project: { _id: 0 } }]).then(words => {
+        this.words = words.map(w => w.word);
+        this.ready = true;
+        this.#client.emit('state', 'sReady');
+      });
   }
   #gameUpdate() {
     this.#loopId = setTimeout(() => {
@@ -54,7 +66,6 @@ class Game {
         }
       } else if (this.#position.length === 0) {
         this.level++;
-        this.ready = false;
         this.#client.emit('game', this.getState());
         this.stop();
         return;
@@ -86,28 +97,15 @@ class Game {
   }
 
   start() {
-    console.log('start');
+    console.log(this.#client.gameId, 'start');
     this.#lastTime = Date.now();
-    this.#client.on('game', word => {
-      for (let i = 0; i < this.#position.length; i++) {
-        if (this.#position[i].word === word) {
-          this.#position.splice(i--, 1);
-          this.correct++;
-          this.score += word.length * 10 + 20;
-          this.#client.emit('game', this.getState());
-          return;
-        }
-      }
-      this.incorrect++;
-      this.score--;
-      this.#client.emit('game', this.getState());
-    });
     this.#gameUpdate();
   }
 
   stop() {
     clearTimeout(this.#loopId);
     this.#position = [];
+    this.ready = false;
     this.#populateWords();
   }
 
@@ -123,6 +121,11 @@ class Game {
     this.correct = 0;
     this.incorrect = 0;
     this.life = 18;
+    this.level = 1;
+  }
+
+  status() {
+    return this.#loopId;
   }
 }
 
