@@ -49,21 +49,23 @@ const Home = () => {
     game.forEach(pos => {
       ctx.fillText(pos.word, (gw - 108) * pos.x, (pos.y / 25) * gh);
     });
-    if (socket.connected && gameState === GAME_STATE.BEFORE_START) socket.emit('init', clientId);
+    if (socket.connected && gameState == GAME_STATE.BEFORE_START) {
+      console.log('init');
+      socket.emit('init', clientId);
+      initGame();
+      return;
+    }
     socket.on('disconnect', () => {
       setFooterText('연결 없음');
     });
-    socket.on('test', data => console.log(data));
     socket.on('state', cmd => {
       console.log('state', cmd);
       switch (cmd) {
+        case 'restart':
+          setGameState(GAME_STATE.BEFORE_START);
+          break;
         case 'sReady':
           switch (gameState) {
-            case GAME_STATE.GAME_OVER:
-              resetGame();
-              setTimeout(() => initGame(), 5000);
-              break;
-            case GAME_STATE.BEFORE_START:
             case GAME_STATE.PLAYING:
               initGame();
               break;
@@ -81,6 +83,7 @@ const Home = () => {
           setFooterText('');
           setGameState(GAME_STATE.GAME_OVER);
           resetGame();
+          setTimeout(() => initGame(), 4000);
           break;
       }
     });
@@ -110,9 +113,7 @@ const Home = () => {
           })
         );
     });
-    return () => {
-      socket.off();
-    };
+    return () => socket.off();
   });
 
   const resetGame = () => {

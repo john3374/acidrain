@@ -1,59 +1,39 @@
-const Game = require('./Game');
-
 require('dotenv').config();
 require('../db');
-// const mariadb = require('mysql2');
-// const pool = mariadb.createPool({
-//   host: process.env.DB_HOST,
-//   user: process.env.DB_USER,
-//   password: process.env.DB_PASSWORD,
-//   connectionLimit: 5,
-//   database: 'kkong',
-// });
-
-const getWords = async () => {
-  let con;
-  try {
-    // con = pool.promise(); // await pool.getConnection();
-    // const [rows, fields] = await con.query('SELECT word FROM acidrain_word ORDER BY RAND() LIMIT 10');
-    console.log(rows);
-    return rows.map(row => row.word);
-  } catch (e) {
-    console.log(e);
-  } finally {
-    // if (con) con.release();
-  }
-};
+const Game = require('./Game');
 const server = require('http').createServer();
 const io = require('socket.io')(server, { cors: { origin: '*', method: ['GET', 'POST'] } });
 const games = {};
 
 io.on('connection', client => {
   console.log(client.id, client.handshake.address);
-  // getWords()
-  //   .then(res => client.emit('test', JSON.stringify(res)))
-  //   .catch(err => console.log(err));
   client.on('login', id => {
     console.log(id);
     client.playerId = id;
   });
   client.on('init', id => {
+    console.log('init');
     if (!client.gameId) client.gameId = id;
     const game = games[client.gameId];
     if (game) {
-      game.stop();
+      if (!game.ready) game.stop();
       game.resetGame();
-    }
-    games[client.gameId] = new Game(client);
+    } else games[client.gameId] = new Game(client);
   });
   client.on('state', cmd => {
-    console.log('state', cmd);
+    console.log(client.gameId, 'state', cmd);
     const game = games[client.gameId];
+    if (game == null) {
+      client.emit('state', 'restart');
+      return;
+    }
     switch (cmd) {
       case 'cReady':
-        client.emit('game', game.getState());
-        client.emit('state', 'play');
-        game.start();
+        if (game.ready) {
+          client.emit('game', game.getState());
+          client.emit('state', 'play');
+          game.start();
+        }
         break;
       case 'play':
         break;
@@ -65,7 +45,7 @@ io.on('connection', client => {
         client.emit('game', game.getState());
         break;
       default:
-        client.to(client.gameId).emit('wow');
+        console.log('unknown cmd', cmd);
     }
   });
   client.on('error', err => {
@@ -73,7 +53,10 @@ io.on('connection', client => {
     console.log(err);
   });
   client.on('disconnect', reason => {
+    console.log('reason', reason);
     delete games[client.gameId];
+    console.log(Object.keys(games));
+    console.log(io.engine.clientsCount);
   });
 });
 
