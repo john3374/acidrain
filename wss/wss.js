@@ -74,7 +74,3 @@ io.on('connection', client => {
 
 server.listen(4000, () => console.log('server running at http://localhost:4000'));
 server.on('error', err => console.err(err));
-
-setInterval(() => {
-  console.log(Object.keys(games));
-}, 5000);
