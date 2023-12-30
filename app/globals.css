@@ -40,7 +40,7 @@ input:focus{outline:0}
 #gameover{color:#fff;background:#00008b;padding:1.25em;font-size:larger;font-weight:500;box-shadow:-.125rem -.125rem #eee;letter-spacing:.25rem}
 .yellow{color:#ff0}
 .modal{background:#aaa;padding:1rem;margin:0}
-.modal .content{font-family:'궁서체',serif;font-weight:600;letter-spacing:.0625rem;margin:0;padding:0;display:flex;gap:2;align-items:center;justify-content:center}
+.modal .content{font-family:'궁서체',serif;font-weight:600;letter-spacing:.0625rem;margin:0;padding:0;display:flex;gap:2;align-items:center;justify-content:center;flex-direction:column}
 .modal-button{margin-top:.5rem}
 .popup-content{padding:0!important;border:none!important}
 .button.profile{display:flex;flex-direction:row}

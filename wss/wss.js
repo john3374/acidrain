@@ -39,6 +39,11 @@ io.on('connection', client => {
   });
   client.on('init', id => {
     if (!client.gameId) client.gameId = id;
+    const game = games[client.gameId];
+    if (game) {
+      game.stop();
+      game.resetGame();
+    }
     games[client.gameId] = new Game(client);
   });
   client.on('state', cmd => {

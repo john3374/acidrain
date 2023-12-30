@@ -3,7 +3,7 @@ import Popup from 'reactjs-popup';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { socket } from '@/components/socket';
+import { socket, clientId } from '@/components/socket';
 import Stopwatch from '@/components/Stopwatch';
 import ScoreBoard from '@/components/ScoreBoard';
 import ButtonLogin from '@/components/ButtonLogin';
@@ -29,7 +29,7 @@ const Home = () => {
   useEffect(() => {
     setHideTutorial(localStorage.getItem('hideTutorial') === 'true' || false);
   }, [showPopup]);
-  
+
   useEffect(() => {
     const ctx = canvasRef.current.getContext('2d');
     // animationFrameId = requestAnimationFrame(gameLoop);
@@ -49,8 +49,7 @@ const Home = () => {
     game.forEach(pos => {
       ctx.fillText(pos.word, (gw - 108) * pos.x, (pos.y / 25) * gh);
     });
-    if (socket.connected) {
-    }
+    if (socket.connected && gameState === GAME_STATE.BEFORE_START) socket.emit('init', clientId);
     socket.on('disconnect', () => {
       setFooterText('연결 없음');
     });
@@ -180,12 +179,6 @@ const Home = () => {
   //   setPopupColour('yellow');
   //   setPopupText('일 시 정 지');
   // };
-  const resumeGame = () => {
-    if (gameState === GAME_STATE.BEFORE_START) {
-      setGameState(GAME_STATE.PLAYING);
-      inputRef.current.focus();
-    }
-  };
 
   return (
     <main onClick={() => inputRef.current.focus()}>
@@ -200,6 +193,9 @@ const Home = () => {
               <div className="modal">
                 <div className="content">
                   <ScoreBoard />
+                  <button className="button" onClick={() => close()}>
+                    닫기
+                  </button>
                 </div>
               </div>
             )}
