@@ -6,7 +6,8 @@
 :root{--foreground-rgb:255,255,255}
 }
 @font-face{font-family:DigitalDismay;src:url(/DigitalDismay.otf) format('woff');font-weight:400;font-style:normal}
-main{color:#030007;background:#aaa;-webkit-touch-callout:none;-webkit-user-select:none;-khtml-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;border:.0625rem solid #000;width:100vw;height:100vh;padding:.5rem;font-family:'궁서체',serif;font-weight:600;letter-spacing:.125rem;overflow:hidden}
+@font-face{font-family:ChosunGs;src:url(https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-04@1.0/ChosunGs.woff) format('woff');font-weight:400;font-style:normal}
+main{color:#030007;background:#aaa;-webkit-touch-callout:none;-webkit-user-select:none;-khtml-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;border:.0625rem solid #000;width:100vw;height:100vh;padding:.5rem;font-family:ChosunGs,serif;font-weight:600;letter-spacing:.125rem;overflow:hidden}
 .title{text-wrap:nowrap;font-size:1.25em;display:flex;color:#eee;background:#00008b;height:2.25rem;align-items:center;justify-content:space-between}
 .title-text{display:flex;align-items:center}
 .logo{vertical-align:bottom;margin-bottom:.125em;display:inline-block}
@@ -26,31 +27,41 @@ main{color:#030007;background:#aaa;-webkit-touch-callout:none;-webkit-user-selec
 .life:nth-child(n+13){background:#ff0}
 .life-container{width:40%;color:#00008b}
 .game{height:calc(100vh - 10.25rem);width:100%}
-.footer{font-size:1.25em;height:5rem}
+.footer{font-size:1.25em;height:5rem;font-weight:500}
 #footer-input{display:flex;position:relative;justify-content:center}
 #footer-input::after{color:transparent;position:absolute;content:attr(data-input)}
-input[type=text]{font-family:'궁서체',serif;font-weight:600;letter-spacing:.0625rem;border:.1875rem solid #030007;height:2rem;width:13vw;margin:0 0 -.1875rem 0;color:transparent;text-shadow:0 0 0 #030007}
+input[type=text]{font-family:ChosunGs,serif;font-weight:600;letter-spacing:.0625rem;border:.1875rem solid #030007;height:2rem;width:13vw;margin:0 0 -.1875rem 0;color:transparent;text-shadow:0 0 0 #030007}
 input:focus{outline:0}
 .footer-status{display:flex;justify-content:space-between;z-index:-1}
 .footer-status>*{border-top:#555 .0625rem solid;border-left:#555 .0625rem solid;border-right:#eee .0625rem solid;border-bottom:#eee .0625rem solid}
-.status{flex:1;color:#ff0}
-.keyboard{font-size:smaller;padding-left:.5em;padding-right:1em}
-.elapsed{font-family:DigitalDismay,sans-serif;font-weight:lighter;font-size:smaller;padding:0 1em}
+.status{flex:1;color:#ff0;padding-left:.5rem}
+.keyboard{font-size:smaller;padding-left:.5em;padding-right:1em;font-weight:600;padding-top:.125rem}
+.elapsed{font-family:DigitalDismay,sans-serif;font-weight:lighter;font-size:smaller;padding:.125rem 1em}
 .popup-container{width:100vw;height:100vh;top:2.25em;left:0;position:fixed;display:flex;align-items:center;justify-content:center;flex-direction:column}
 #gameover{color:#fff;background:#00008b;padding:1.25em;font-size:larger;font-weight:500;box-shadow:-.125rem -.125rem #eee;letter-spacing:.25rem}
 .yellow{color:#ff0}
 .modal{background:#aaa;padding:1rem;margin:0}
-.modal .content{font-family:'궁서체',serif;font-weight:600;letter-spacing:.0625rem;margin:0;padding:0;display:flex;gap:2;align-items:center;justify-content:center;flex-direction:column}
+.modal .content{font-family:ChosunGs,serif;font-weight:600;letter-spacing:.0625rem;margin:0;padding:0;display:flex;gap:2;align-items:center;justify-content:center;flex-direction:column}
 .modal-button{margin-top:.5rem}
 .popup-content{padding:0!important;border:none!important}
 .button.profile{display:flex;flex-direction:row}
 .profile{display:flex;flex-direction:row;align-items:center}
 .circle{border-radius:50%}
 .leaderboard{width:100%;display:flex;flex-direction:column;justify-content:center;font-size:1.5em}
+@media only screen and (max-width:1000px){
+.popup-content{width:70vw!important;overflow:scroll}
+.leaderboard{font-size:1em}
+}
+@media only screen and (max-width:600px){
+.popup-content{width:90vw!important;overflow:scroll}
+.leaderboard{font-size:.8em}
+}
 .leaderboard tr{display:flex;justify-content:center}
 .leaderboard tr *{width:100%;text-align:center}
-.leaderboard th{margin:4px 2px;border-style:inset;border:3px solid #555}
-.leaderboard th:first-child{border-radius:8px 0 0 0}
+.leaderboard th{margin:4px 2px;border-style:inset;border:3px solid #555;flex:1}
+.leaderboard th:first-child{border-radius:8px 0 0 0;flex:1.5}
 .leaderboard th:last-child{border-radius:0 8px 0 0}
-.leaderboard td{margin:4px 2px;border-style:outset;border:3px solid #555}
-.tutorial{top:6rem;position:fixed;display:flex;font-family:'궁서체',serif;font-size:1.5em;justify-content:center;text-align:center;background-color:#777;padding:1.25em;font-size:larger;font-weight:500;box-shadow:-.125rem -.125rem #eee;letter-spacing:.25rem;flex-direction:column;color:#ff0}
+.leaderboard td{margin:4px 2px;border-style:outset;border:3px solid #555;overflow:hidden;text-wrap:nowrap;flex:1}
+.leaderboard td:first-child{flex:1.5}
+.tutorial{top:6rem;position:fixed;display:flex;font-family:ChosunGs,serif;font-size:1.5em;justify-content:center;text-align:center;background-color:#777;padding:1.25em;font-size:larger;font-weight:500;box-shadow:-.125rem -.125rem #eee;letter-spacing:.25rem;flex-direction:column;color:#ff0}
+.button.signout{font-family:san-serif}

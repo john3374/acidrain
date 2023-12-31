@@ -71,7 +71,7 @@ const ButtonLogin = () => {
           )}
         </Popup>
         <button
-          className="button"
+          className="button signout"
           onClick={e => {
             e.preventDefault();
             signOut();
