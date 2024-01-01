@@ -13,8 +13,8 @@ const GAME_STATE = { BEFORE_START: 0, PLAYING: 1, GAME_OVER: 2, READY: 3, WAITIN
 
 const Home = () => {
   const inputRef = useRef(null);
-  const inputValueRef = useRef(null);
   const canvasRef = useRef(null);
+  const [input, setInput] = useState('');
   const [showPopup, setShowPopup] = useState(false);
   const [popupText, setPopupText] = useState('');
   const [titleText, setTitleText] = useState('랜덤타자연습');
@@ -33,6 +33,34 @@ const Home = () => {
   }, [showPopup]);
 
   useEffect(() => {
+    if (online === false && initTimeId == null)
+      initTimeId = setTimeout(() => {
+        if (socket.connected && gameState == GAME_STATE.BEFORE_START) {
+          socket.emit('init', clientId);
+          initGame();
+          setOnline(true);
+        }
+      }, 2000);
+
+    const ctx = canvasRef.current.getContext('2d');
+    // animationFrameId = requestAnimationFrame(gameLoop);
+    const gw = canvasRef.current.offsetWidth;
+    const gh = canvasRef.current.offsetHeight;
+    ctx.canvas.width = gw;
+    ctx.canvas.height = gh;
+    // safely reset frame counter
+    // render
+    ctx.clearRect(0, 0, canvasRef.current.offsetWidth, canvasRef.current.offsetHeight);
+
+    // ctx.font = '600 1rem san-serif';
+    // ctx.fillText(clientId, 5, 15);
+    // ctx.fillText(ctx.measureText('벌거숭이').width, 5, 30);
+
+    ctx.font = '600 1.5em 궁서';
+    game.forEach(pos => {
+      ctx.fillText(pos.word, (gw - 108) * pos.x, (pos.y / 25) * gh);
+    });
+
     socket.on('disconnect', () => {
       setFooterText('연결 없음');
     });
@@ -91,37 +119,7 @@ const Home = () => {
           })
         );
     });
-    console.log('socket on');
-  }, [online]);
-
-  useEffect(() => {
-    if (online === false && initTimeId == null)
-      initTimeId = setTimeout(() => {
-        if (socket.connected && gameState == GAME_STATE.BEFORE_START) {
-          socket.emit('init', clientId);
-          initGame();
-          setOnline(true);
-        }
-      }, 2000);
-
-    const ctx = canvasRef.current.getContext('2d');
-    // animationFrameId = requestAnimationFrame(gameLoop);
-    const gw = canvasRef.current.offsetWidth;
-    const gh = canvasRef.current.offsetHeight;
-    ctx.canvas.width = gw;
-    ctx.canvas.height = gh;
-    // safely reset frame counter
-    // render
-    ctx.clearRect(0, 0, canvasRef.current.offsetWidth, canvasRef.current.offsetHeight);
-
-    // ctx.font = '600 1rem san-serif';
-    // ctx.fillText(clientId, 5, 15);
-    // ctx.fillText(ctx.measureText('벌거숭이').width, 5, 30);
-
-    ctx.font = '600 1.5em 궁서';
-    game.forEach(pos => {
-      ctx.fillText(pos.word, (gw - 108) * pos.x, (pos.y / 25) * gh);
-    });
+    return () => socket.off();
   });
 
   const resetGame = () => {
@@ -155,7 +153,7 @@ const Home = () => {
         );
     return bar;
   };
-  const inputChangeHandler = e => (inputValueRef.current = e.target.value);
+  const inputChangeHandler = e => setInput(e.target.value);
   const inputHandler = e => {
     if (e.nativeEvent.isComposing === false)
       switch (e.code) {
@@ -173,11 +171,12 @@ const Home = () => {
               socket.emit('state', 'cReady');
               break;
             case GAME_STATE.PLAYING:
-              const trimmed = inputRef.current.value.trim();
+              const trimmed = input.trim(); // inputRef.current.value.trim();
               if (trimmed) socket.emit('game', trimmed);
               break;
           }
-          inputRef.current.value = '';
+          // inputRef.current.value = '';
+          setInput('');
           break;
       }
   };
@@ -230,7 +229,17 @@ const Home = () => {
       <canvas className="game" ref={canvasRef} />
       <div className="footer">
         <div id="footer-input" data-input="">
-          <input className="p-4" id="gameInput" type="text" spellCheck="false" autoFocus onKeyDown={inputHandler} ref={r => (inputRef.current = r)} />
+          <input
+            className="p-4"
+            id="gameInput"
+            type="text"
+            spellCheck="false"
+            autoFocus
+            onKeyDown={inputHandler}
+            ref={inputRef}
+            value={input}
+            onChange={inputChangeHandler}
+          />
         </div>
         <div className="footer-status">
           <div className="keyboard">한글-2</div>
