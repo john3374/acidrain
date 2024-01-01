@@ -26,15 +26,14 @@ const Home = () => {
   const [hideTutorial, setHideTutorial] = useState(false);
   const [online, setOnline] = useState(false);
   const { data: session } = useSession();
-  let initTimeId = null;
 
   useEffect(() => {
     setHideTutorial(localStorage.getItem('hideTutorial') === 'true' || false);
   }, [showPopup]);
 
   useEffect(() => {
-    if (online === false && initTimeId == null)
-      initTimeId = setTimeout(() => {
+    if (online === false)
+      setTimeout(() => {
         if (socket.connected && gameState == GAME_STATE.BEFORE_START) {
           socket.emit('init', clientId);
           initGame();
