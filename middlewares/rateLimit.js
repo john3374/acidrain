@@ -3,7 +3,6 @@ import { Cache } from 'memory-cache';
 const cache = new Cache();
 const NUMBER_OF_REQUESTS = 10;
 const DURATION = 5000;
-console.log('rate limit');
 
 const rateLimit = req => {
   try {

@@ -12,13 +12,15 @@ io.on('connection', client => {
     client.playerId = id;
   });
   client.on('init', id => {
-    console.log('init');
     if (!client.gameId) client.gameId = id;
     const game = games[client.gameId];
     if (game) {
       if (!game.ready) game.stop();
       game.resetGame();
-    } else games[client.gameId] = new Game(client);
+    } else {
+      client.gameId = id;
+      games[id] = new Game(client);
+    }
   });
   client.on('state', cmd => {
     console.log(client.gameId, 'state', cmd);

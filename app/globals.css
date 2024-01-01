@@ -31,6 +31,12 @@ main{color:#030007;background:#aaa;-webkit-touch-callout:none;-webkit-user-selec
 #footer-input{display:flex;position:relative;justify-content:center}
 #footer-input::after{color:transparent;position:absolute;content:attr(data-input)}
 input[type=text]{font-family:ChosunGs,serif;font-weight:600;letter-spacing:.0625rem;border:.1875rem solid #030007;height:2rem;width:13vw;margin:0 0 -.1875rem 0;color:transparent;text-shadow:0 0 0 #030007}
+@media only screen and (max-width:1000px){
+input[type=text]{width:20vw}
+}
+@media only screen and (max-width:600px){
+  input[type=text]{width:40vw}
+  }
 input:focus{outline:0}
 .footer-status{display:flex;justify-content:space-between;z-index:-1}
 .footer-status>*{border-top:#555 .0625rem solid;border-left:#555 .0625rem solid;border-right:#eee .0625rem solid;border-bottom:#eee .0625rem solid}

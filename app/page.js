@@ -9,7 +9,7 @@ import ScoreBoard from '@/components/ScoreBoard';
 import ButtonLogin from '@/components/ButtonLogin';
 import 'reactjs-popup/dist/index.css';
 
-const GAME_STATE = { BEFORE_START: 0, PLAYING: 1, GAME_OVER: 2, READY: 3 };
+const GAME_STATE = { BEFORE_START: 0, PLAYING: 1, GAME_OVER: 2, READY: 3, WAITING: 4 };
 
 const Home = () => {
   const inputRef = useRef(null);
@@ -24,37 +24,15 @@ const Home = () => {
   const [game, setGame] = useState([]);
   const [gameState, setGameState] = useState(0);
   const [hideTutorial, setHideTutorial] = useState(false);
+  const [online, setOnline] = useState(false);
   const { data: session } = useSession();
+  let initTimeId = null;
 
   useEffect(() => {
     setHideTutorial(localStorage.getItem('hideTutorial') === 'true' || false);
   }, [showPopup]);
 
   useEffect(() => {
-    const ctx = canvasRef.current.getContext('2d');
-    // animationFrameId = requestAnimationFrame(gameLoop);
-    const gw = canvasRef.current.offsetWidth;
-    const gh = canvasRef.current.offsetHeight;
-    ctx.canvas.width = gw;
-    ctx.canvas.height = gh;
-    // safely reset frame counter
-    // render
-    ctx.clearRect(0, 0, canvasRef.current.offsetWidth, canvasRef.current.offsetHeight);
-
-    // ctx.font = '600 1rem san-serif';
-    // ctx.fillText(clientId, 5, 15);
-    // ctx.fillText(ctx.measureText('벌거숭이').width, 5, 30);
-
-    ctx.font = '600 1.5em 궁서';
-    game.forEach(pos => {
-      ctx.fillText(pos.word, (gw - 108) * pos.x, (pos.y / 25) * gh);
-    });
-    if (socket.connected && gameState == GAME_STATE.BEFORE_START) {
-      console.log('init');
-      socket.emit('init', clientId);
-      initGame();
-      return;
-    }
     socket.on('disconnect', () => {
       setFooterText('연결 없음');
     });
@@ -113,7 +91,37 @@ const Home = () => {
           })
         );
     });
-    return () => socket.off();
+    console.log('socket on');
+  }, [online]);
+
+  useEffect(() => {
+    if (online === false && initTimeId == null)
+      initTimeId = setTimeout(() => {
+        if (socket.connected && gameState == GAME_STATE.BEFORE_START) {
+          socket.emit('init', clientId);
+          initGame();
+          setOnline(true);
+        }
+      }, 2000);
+
+    const ctx = canvasRef.current.getContext('2d');
+    // animationFrameId = requestAnimationFrame(gameLoop);
+    const gw = canvasRef.current.offsetWidth;
+    const gh = canvasRef.current.offsetHeight;
+    ctx.canvas.width = gw;
+    ctx.canvas.height = gh;
+    // safely reset frame counter
+    // render
+    ctx.clearRect(0, 0, canvasRef.current.offsetWidth, canvasRef.current.offsetHeight);
+
+    // ctx.font = '600 1rem san-serif';
+    // ctx.fillText(clientId, 5, 15);
+    // ctx.fillText(ctx.measureText('벌거숭이').width, 5, 30);
+
+    ctx.font = '600 1.5em 궁서';
+    game.forEach(pos => {
+      ctx.fillText(pos.word, (gw - 108) * pos.x, (pos.y / 25) * gh);
+    });
   });
 
   const resetGame = () => {
