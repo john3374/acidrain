@@ -64,6 +64,9 @@ const ButtonLogin = () => {
                     <button type="reset" className="button" onClick={() => resetClose(close)}>
                       취소
                     </button>
+                    <button className="button" onClick={() => signOut()}>
+                      로그아웃
+                    </button>
                   </div>
                 </form>
               </div>
@@ -71,10 +74,10 @@ const ButtonLogin = () => {
           )}
         </Popup>
         <button
-          className="button signout"
+          className="button quit"
           onClick={e => {
             e.preventDefault();
-            signOut();
+            socket.emit('state', 'gameover');
           }}
         >
           X

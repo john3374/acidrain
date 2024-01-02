@@ -55,10 +55,8 @@ const Home = () => {
     // ctx.fillText(clientId, 5, 15);
     // ctx.fillText(ctx.measureText('벌거숭이').width, 5, 30);
 
-    ctx.font = '600 1.5em 궁서';
-    game.forEach(pos => {
-      ctx.fillText(pos.word, (gw - 108) * pos.x, (pos.y / 25) * gh);
-    });
+    ctx.font = '600 1.5em ChosunGs';
+    game.forEach(pos => ctx.fillText(pos.word, (gw - 108) * pos.x, (pos.y / 25) * gh));
 
     socket.on('disconnect', () => {
       setFooterText('연결 없음');
@@ -157,6 +155,7 @@ const Home = () => {
     if (e.nativeEvent.isComposing === false) {
       let code = e.keyCode || e.which;
       if (code === 0 || code === 229) code = e.target.value.charAt(e.target.selectionStart - 1).charCodeAt();
+      console.log(code);
       switch (code) {
         case 27: // escape
           socket.emit('state', 'gameover');
