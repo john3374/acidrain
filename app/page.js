@@ -154,13 +154,15 @@ const Home = () => {
   };
   const inputChangeHandler = e => setInput(e.target.value);
   const inputHandler = e => {
-    if (e.nativeEvent.isComposing === false)
-      switch (e.code) {
-        case 'Escape':
+    if (e.nativeEvent.isComposing === false) {
+      let code = e.keyCode || e.which;
+      if (code === 0 || code === 229) code = e.target.value.charAt(e.target.selectionStart - 1).charCodeAt();
+      switch (code) {
+        case 27: // escape
           socket.emit('state', 'gameover');
           break;
-        case 'Space':
-        case 'Enter':
+        case 13: // enter
+        case 32: // space
           e.preventDefault();
           switch (gameState) {
             case GAME_STATE.GAME_OVER:
@@ -170,14 +172,14 @@ const Home = () => {
               socket.emit('state', 'cReady');
               break;
             case GAME_STATE.PLAYING:
-              const trimmed = input.trim(); // inputRef.current.value.trim();
+              const trimmed = input.trim();
               if (trimmed) socket.emit('game', trimmed);
               break;
           }
-          // inputRef.current.value = '';
           setInput('');
           break;
       }
+    }
   };
 
   // onFocus={resumeGame}
