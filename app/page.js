@@ -26,6 +26,8 @@ const Home = () => {
   const [hideTutorial, setHideTutorial] = useState(false);
   const [online, setOnline] = useState(false);
   const { data: session } = useSession();
+  const userAgent = navigator.userAgent.toLowerCase();
+  const isMobile = /iphone|ipad|ipod|android|blackberry|windows phone/g.test(userAgent);
 
   useEffect(() => {
     setHideTutorial(localStorage.getItem('hideTutorial') === 'true' || false);
@@ -155,7 +157,6 @@ const Home = () => {
     if (e.nativeEvent.isComposing === false) {
       let code = e.keyCode || e.which;
       if (code === 0 || code === 229) code = e.target.value.charAt(e.target.selectionStart - 1).charCodeAt();
-      console.log(code);
       switch (code) {
         case 27: // escape
           socket.emit('state', 'gameover');
@@ -235,7 +236,8 @@ const Home = () => {
             type="text"
             spellCheck="false"
             autoFocus
-            onKeyDown={inputHandler}
+            onKeyUp={isMobile && inputHandler}
+            onKeyDown={!isMobile && inputHandler}
             ref={inputRef}
             value={input}
             onChange={inputChangeHandler}
