@@ -26,8 +26,13 @@ const Home = ({ req }) => {
   const [hideTutorial, setHideTutorial] = useState(false);
   const [online, setOnline] = useState(false);
   const { data: session } = useSession();
-  const userAgent = req?.headers['user-agent'];
-  const isMobile = userAgent.match(/Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i);
+
+  useEffect(() => {
+    if (gameState === GAME_STATE.PLAYING) {
+      const trimmed = input.trim();
+      if (trimmed) socket.emit('game', trimmed);
+    }
+  }, [input]);
 
   useEffect(() => {
     setHideTutorial(localStorage.getItem('hideTutorial') === 'true' || false);
@@ -157,13 +162,13 @@ const Home = ({ req }) => {
     if (e.nativeEvent.isComposing === false) {
       let code = e.keyCode || e.which;
       if (code === 0 || code === 229) code = e.target.value.charAt(e.target.selectionStart - 1).charCodeAt();
+      e.preventDefault();
       switch (code) {
         case 27: // escape
           socket.emit('state', 'gameover');
           break;
         case 13: // enter
         case 32: // space
-          e.preventDefault();
           switch (gameState) {
             case GAME_STATE.GAME_OVER:
               break;
@@ -172,11 +177,9 @@ const Home = ({ req }) => {
               socket.emit('state', 'cReady');
               break;
             case GAME_STATE.PLAYING:
-              const trimmed = input.trim();
-              if (trimmed) socket.emit('game', trimmed);
+              setInput(e.target.value);
               break;
           }
-          setInput('');
           break;
       }
     }
@@ -230,18 +233,7 @@ const Home = ({ req }) => {
       <canvas className="game" ref={canvasRef} />
       <div className="footer">
         <div id="footer-input" data-input="">
-          <input
-            className="p-4"
-            id="gameInput"
-            type="text"
-            spellCheck="false"
-            autoFocus
-            onKeyUp={isMobile && inputHandler}
-            onKeyDown={!isMobile && inputHandler}
-            ref={inputRef}
-            value={input}
-            onChange={inputChangeHandler}
-          />
+          <input className="p-4" id="gameInput" type="text" spellCheck="false" autoFocus onKeyDown={inputHandler} ref={inputRef} />
         </div>
         <div className="footer-status">
           <div className="keyboard">한글-2</div>
