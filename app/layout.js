@@ -9,16 +9,16 @@ export const metadata = {
 };
 // <meta name="google-signin-client_id" content="383578851033-0c7215q3in0pdk6k3rlcllr179bl56cu.apps.googleusercontent.com" />
 
-export default function RootLayout({ children }) {
-  return (
-    <html lang="ko">
-      <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-      </head>
-      <body>
-        <NextAuthProvider>{children}</NextAuthProvider>
-      </body>
-    </html>
-  );
-}
+const RootLayout = ({ children }) => (
+  <html lang="ko">
+    <head>
+      <meta charSet="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    </head>
+    <body>
+      <NextAuthProvider>{children}</NextAuthProvider>
+    </body>
+  </html>
+);
+
+export default RootLayout;

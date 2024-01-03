@@ -11,7 +11,7 @@ import 'reactjs-popup/dist/index.css';
 
 const GAME_STATE = { BEFORE_START: 0, PLAYING: 1, GAME_OVER: 2, READY: 3, WAITING: 4 };
 
-const Home = () => {
+const Home = ({ req }) => {
   const inputRef = useRef(null);
   const canvasRef = useRef(null);
   const [input, setInput] = useState('');
@@ -26,8 +26,8 @@ const Home = () => {
   const [hideTutorial, setHideTutorial] = useState(false);
   const [online, setOnline] = useState(false);
   const { data: session } = useSession();
-  const userAgent = navigator.userAgent.toLowerCase();
-  const isMobile = /iphone|ipad|ipod|android|blackberry|windows phone/g.test(userAgent);
+  const userAgent = req?.headers['user-agent'];
+  const isMobile = userAgent.match(/Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i);
 
   useEffect(() => {
     setHideTutorial(localStorage.getItem('hideTutorial') === 'true' || false);
