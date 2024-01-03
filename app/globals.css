@@ -33,9 +33,19 @@ main{color:#030007;background:#aaa;-webkit-touch-callout:none;-webkit-user-selec
 input[type=text]{font-family:ChosunGs,serif;font-weight:600;letter-spacing:.0625rem;border:.1875rem solid #030007;height:2rem;width:13vw;margin:0 0 -.1875rem 0;color:transparent;text-shadow:0 0 0 #030007}
 @media only screen and (max-width:1000px){
 input[type=text]{width:20vw}
+.popup-content{width:70vw!important;overflow:scroll}
+.leaderboard{font-size:1em}
+.dashboard{font-size:1em}
+.footer{font-size:1em}
+.title{font-size:1em;height:1.75rem}
 }
 @media only screen and (max-width:600px){
 input[type=text]{width:40vw}
+.popup-content{width:90vw!important;overflow:scroll}
+.leaderboard{font-size:.8em}
+.dashboard{font-size:.8em}
+.footer{font-size:.8em}
+.title{font-size:.8em;height:1.5rem}
 }
 input:focus{outline:0}
 .footer-status{display:flex;justify-content:space-between;z-index:-1}
@@ -51,17 +61,9 @@ input:focus{outline:0}
 .modal-button{margin-top:.5rem}
 .popup-content{padding:0!important;border:none!important}
 .button.profile{display:flex;flex-direction:row}
-.profile{display:flex;flex-direction:row;align-items:center}
+.profile{display:flex;flex-direction:row;align-items:center;justify-content:flex-end}
 .circle{border-radius:50%}
 .leaderboard{width:100%;display:flex;flex-direction:column;justify-content:center;font-size:1.5em}
-@media only screen and (max-width:1000px){
-.popup-content{width:70vw!important;overflow:scroll}
-.leaderboard{font-size:1em}
-}
-@media only screen and (max-width:600px){
-.popup-content{width:90vw!important;overflow:scroll}
-.leaderboard{font-size:.8em}
-}
 .leaderboard tr{display:flex;justify-content:center}
 .leaderboard tr *{width:100%;text-align:center}
 .leaderboard th{margin:4px 2px;border-style:inset;border:3px solid #555;flex:1}

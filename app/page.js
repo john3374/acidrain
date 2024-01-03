@@ -11,7 +11,7 @@ import 'reactjs-popup/dist/index.css';
 
 const GAME_STATE = { BEFORE_START: 0, PLAYING: 1, GAME_OVER: 2, READY: 3, WAITING: 4 };
 
-const Home = ({ req }) => {
+const Home = () => {
   const inputRef = useRef(null);
   const canvasRef = useRef(null);
   const [input, setInput] = useState('');
@@ -61,10 +61,11 @@ const Home = ({ req }) => {
 
     // ctx.font = '600 1rem san-serif';
     // ctx.fillText(clientId, 5, 15);
-    // ctx.fillText(ctx.measureText('벌거숭이').width, 5, 30);
+    // ctx.fillText(ctx.measureText('벌거숭이').actualBoundingBoxDescent , 5, 45);
 
-    ctx.font = '600 1.5em ChosunGs';
-    game.forEach(pos => ctx.fillText(pos.word, (gw - 108) * pos.x, (pos.y / 25) * gh));
+    const fontSize = gw > 1000 ? '1.5em' : '1em';
+    ctx.font = `600 ${fontSize} ChosunGs`;
+    game.forEach(pos => ctx.fillText(pos.word, (gw - 108) * pos.x, (pos.y / 25) * gh + 20));
 
     socket.on('disconnect', () => {
       setFooterText('연결 없음');
@@ -233,7 +234,16 @@ const Home = ({ req }) => {
       <canvas className="game" ref={canvasRef} />
       <div className="footer">
         <div id="footer-input" data-input="">
-          <input className="p-4" id="gameInput" type="text" spellCheck="false" autoFocus onKeyUp={inputHandler} ref={inputRef} />
+          <input
+            className="p-4"
+            id="gameInput"
+            type="text"
+            spellCheck="false"
+            autoFocus
+            onKeyUp={inputHandler}
+            onKeyDown={inputHandler}
+            ref={inputRef}
+          />
         </div>
         <div className="footer-status">
           <div className="keyboard">한글-2</div>
