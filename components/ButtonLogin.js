@@ -3,6 +3,7 @@ import { useSession, signIn, signOut } from 'next-auth/react';
 import Image from 'next/image';
 import { useRef, useState } from 'react';
 import Popup from 'reactjs-popup';
+import { socket } from './socket';
 
 const ButtonLogin = () => {
   const { data: session, status, update } = useSession();
