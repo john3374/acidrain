@@ -31,6 +31,7 @@ const Home = ({ req }) => {
     if (gameState === GAME_STATE.PLAYING) {
       const trimmed = input.trim();
       if (trimmed) socket.emit('game', trimmed);
+      inputRef.current.value = '';
     }
   }, [input]);
 
@@ -162,7 +163,6 @@ const Home = ({ req }) => {
     if (e.nativeEvent.isComposing === false) {
       let code = e.keyCode || e.which;
       if (code === 0 || code === 229) code = e.target.value.charAt(e.target.selectionStart - 1).charCodeAt();
-      e.preventDefault();
       switch (code) {
         case 27: // escape
           socket.emit('state', 'gameover');
@@ -233,7 +233,7 @@ const Home = ({ req }) => {
       <canvas className="game" ref={canvasRef} />
       <div className="footer">
         <div id="footer-input" data-input="">
-          <input className="p-4" id="gameInput" type="text" spellCheck="false" autoFocus onKeyDown={inputHandler} ref={inputRef} />
+          <input className="p-4" id="gameInput" type="text" spellCheck="false" autoFocus onKeyUp={inputHandler} ref={inputRef} />
         </div>
         <div className="footer-status">
           <div className="keyboard">한글-2</div>
