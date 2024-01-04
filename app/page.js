@@ -214,6 +214,15 @@ const Home = () => {
             )}
           </Popup>
           <ButtonLogin />
+          <button
+            className="button quit"
+            onClick={e => {
+              e.preventDefault();
+              socket.emit('state', 'gameover');
+            }}
+          >
+            X
+          </button>
         </div>
       </div>
       <div className="dashboard">
@@ -257,8 +266,13 @@ const Home = () => {
         <div className="popup-container" onClick={() => inputRef.current.focus()}>
           {!hideTutorial && (
             <div className="tutorial">
-              로그인을 하시면 <br />
+              로그인을 하시면
+              <br />
               점수를 기록하실 수 있습니다.
+              <br />
+              로그인을 위해 이메일만 수집합니다.
+              <br />
+              탈퇴시 이메일과 기록은 삭제됩니다.
               <button
                 className="button"
                 onClick={() => {

@@ -26,7 +26,13 @@ const ScoreBoard = () => {
         <th>점수</th>
         <th>일자</th>
       </tr>
-      {score}
+      {score.length > 0 ? (
+        score
+      ) : (
+        <tr>
+          <td colspan={3}>점수가 없습니다.</td>
+        </tr>
+      )}
     </table>
   );
 };

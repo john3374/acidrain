@@ -3,7 +3,7 @@ import DiscordProvider from 'next-auth/providers/discord';
 import GoogleProvider from 'next-auth/providers/google';
 import GithubProvider from 'next-auth/providers/github';
 import '@/db';
-import { Player } from '@/schema';
+import { Player, Score } from '@/schema';
 
 const handler = NextAuth({
   // logger: {
@@ -33,28 +33,36 @@ const handler = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user }) {
       const updatedUser = await Player.findOneAndUpdate({ email: user.email }, {}, { upsert: true, new: true });
       user.nickname = updatedUser.nickname;
       user.id = updatedUser._id.toString();
       return user;
     },
-    async session({ session, token }) {
+    async session({ session, token: { nickname, image, id } }) {
       // console.log('session', session);
       // console.log('token', token);
-      session.user.nickname = token.nickname;
-      session.user.image = token.image;
-      session.user.id = token.id;
+      session.user = { nickname, image, id };
       return session;
     },
     async jwt(params) {
       // console.log('jwt', params);
       Object.assign(params.token, params.user);
-      if (params.trigger === 'update' && params.session.nickname) {
-        params.token.nickname = params.session.nickname;
-        Player.findOneAndUpdate({ email: params.token.email }, { $set: { nickname: params.session.nickname } }).catch(err =>
-          console.log('failed to change nickname', err)
-        );
+      if (params.trigger === 'update') {
+        if (params.session.delete === 1) {
+          try {
+            const deleted = await Player.findOneAndDelete({ email: params.token.email });
+            Score.deleteMany({ player: deleted._id }).catch(err => console.log('failed to delete scores', err));
+            return {};
+          } catch (e) {
+            console.log(e);
+          }
+        } else if (params.session.nickname) {
+          params.token.nickname = params.session.nickname.substring(0, 7);
+          Player.findOneAndUpdate({ email: params.token.email }, { $set: { nickname: params.session.nickname } }).catch(err =>
+            console.log('failed to change nickname', err)
+          );
+        }
       }
       return { ...params.token };
     },
