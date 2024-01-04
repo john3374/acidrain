@@ -26,7 +26,7 @@ const ScoreBoard = () => {
         <th>점수</th>
         <th>일자</th>
       </tr>
-      {score.length > 0 ? (
+      {score?.length > 0 ? (
         score
       ) : (
         <tr>
