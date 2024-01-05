@@ -40,16 +40,16 @@ const Home = () => {
   }, [showPopup]);
 
   useEffect(() => {
+    const ctx = canvasRef.current.getContext('2d');
     if (online === false)
       setTimeout(() => {
         if (socket.connected && gameState == GAME_STATE.BEFORE_START) {
-          socket.emit('init', clientId);
+          socket.emit('init', { clientId, width: canvasRef.current.offsetWidth, charWidth: ctx.measureText('글').width });
           initGame();
           setOnline(true);
         }
       }, 2000);
 
-    const ctx = canvasRef.current.getContext('2d');
     // animationFrameId = requestAnimationFrame(gameLoop);
     const gw = canvasRef.current.offsetWidth;
     const gh = canvasRef.current.offsetHeight;
@@ -249,7 +249,6 @@ const Home = () => {
             type="text"
             spellCheck="false"
             autoFocus
-            onKeyUp={inputHandler}
             onKeyDown={inputHandler}
             ref={inputRef}
           />

@@ -11,15 +11,17 @@ io.on('connection', client => {
     console.log(id);
     client.playerId = id;
   });
-  client.on('init', id => {
-    if (!client.gameId) client.gameId = id;
+  client.on('init', ({ clientId, width, charWidth }) => {
+    client.width = width;
+    client.charWidth = charWidth;
+    if (!client.gameId) client.gameId = clientId;
     const game = games[client.gameId];
     if (game) {
       if (!game.ready) game.stop();
       game.resetGame();
     } else {
-      client.gameId = id;
-      games[id] = new Game(client);
+      client.gameId = clientId;
+      games[clientId] = new Game(client);
     }
   });
   client.on('state', cmd => {
