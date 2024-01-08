@@ -75,3 +75,9 @@ input:focus{outline:0}
 .leaderboard td:first-child{flex:1.5}
 .tutorial{top:6rem;position:fixed;display:flex;font-family:ChosunGs,serif;font-size:1.5em;justify-content:center;text-align:center;background-color:#777;padding:1.25em;font-size:larger;font-weight:500;box-shadow:-.125rem -.125rem #eee;letter-spacing:.25rem;flex-direction:column;color:#ff0}
 .button.quit{font-family:san-serif}
+.word-bg-picker{display:flex;align-items:center}
+.word-bg{width:1.5vw;height:1.5vw;margin-left:.625rem;border:2px solid #000}
+.word-bg.active{border:2px solid #ff0}
+.word-bg.fff{background-color:#fff}
+.word-bg.ccc{background-color:#ccc}
+.word-bg.aaa{background-color:#aaa}

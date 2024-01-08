@@ -25,6 +25,7 @@ const Home = () => {
   const [gameState, setGameState] = useState(0);
   const [hideTutorial, setHideTutorial] = useState(false);
   const [online, setOnline] = useState(false);
+  const [bgWord, setBgWord] = useState('#aaa');
   const { data: session } = useSession();
 
   useEffect(() => {
@@ -38,6 +39,10 @@ const Home = () => {
   useEffect(() => {
     setHideTutorial(localStorage.getItem('hideTutorial') === 'true' || false);
   }, [showPopup]);
+
+  useEffect(() => { console.log('hi')
+    setBgWord(localStorage.getItem('wordBgColour') || '#aaa');
+  }, [bgWord]);
 
   useEffect(() => {
     const ctx = canvasRef.current.getContext('2d');
@@ -65,7 +70,13 @@ const Home = () => {
 
     const fontSize = gw > 1000 ? '1.5em' : '1em';
     ctx.font = `600 ${fontSize} ChosunGs`;
-    game.forEach(pos => ctx.fillText(pos.word, (gw - 108) * pos.x, (pos.y / 25) * gh + 20));
+    game.forEach(pos => {
+      const metrics = ctx.measureText(pos.word);
+      ctx.fillStyle = bgWord;
+      ctx.fillRect((gw - 108) * pos.x, (pos.y / 25) * gh, metrics.width, metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent);
+      ctx.fillStyle = '#000';
+      ctx.fillText(pos.word, (gw - 108) * pos.x, (pos.y / 25) * gh + 20);
+    });
 
     socket.on('disconnect', () => {
       setFooterText('연결 없음');
@@ -185,6 +196,10 @@ const Home = () => {
       }
     }
   };
+  const handleColourChange = c => {
+    localStorage.setItem('wordBgColour', c);
+    setBgWord(c);
+  };
 
   // onFocus={resumeGame}
   // onBlur={() => (isGame ? pauseGame() : 0)}
@@ -206,6 +221,24 @@ const Home = () => {
               <div className="modal">
                 <div className="content">
                   <ScoreBoard />
+                  <button className="button" onClick={() => close()}>
+                    닫기
+                  </button>
+                </div>
+              </div>
+            )}
+          </Popup>
+          <Popup trigger={<button className="button">설정</button>} modal nested>
+            {close => (
+              <div className="modal">
+                <div className="content">
+                  <div className="word-bg-picker">
+                    단어 배경색:
+                    <button className={`word-bg aaa${bgWord === '#aaa' ? ' active' : ''}`} onClick={() => handleColourChange('#aaa')}></button>
+                    <button className={`word-bg ccc${bgWord === '#ccc' ? ' active' : ''}`} onClick={() => handleColourChange('#ccc')}></button>
+                    <button className={`word-bg fff${bgWord === '#fff' ? ' active' : ''}`} onClick={() => handleColourChange('#fff')}></button>
+                  </div>
+                  <hr />
                   <button className="button" onClick={() => close()}>
                     닫기
                   </button>
@@ -243,15 +276,7 @@ const Home = () => {
       <canvas className="game" ref={canvasRef} />
       <div className="footer">
         <div id="footer-input" data-input="">
-          <input
-            className="p-4"
-            id="gameInput"
-            type="text"
-            spellCheck="false"
-            autoFocus
-            onKeyDown={inputHandler}
-            ref={inputRef}
-          />
+          <input className="p-4" id="gameInput" type="text" spellCheck="false" autoFocus onKeyDown={inputHandler} ref={inputRef} />
         </div>
         <div className="footer-status">
           <div className="keyboard">한글-2</div>

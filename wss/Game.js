@@ -174,6 +174,11 @@ class Game {
   }
 
   recordScore() {
+    GameDB.updateOne(
+      { gameId: this.#client.gameId },
+      { $set: { correct: this.correct, incorrect: this.incorrect, life: this.life, score: this.score } },
+      { upsert: true }
+    ).catch(err => console.log('failed to update game', err));
     if (this.#client.playerId) {
       const score = new Score({ score: this.score, player: new ObjectId(this.#client.playerId) });
       score.save().catch(err => console.log(err));
