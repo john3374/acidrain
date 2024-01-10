@@ -4,7 +4,7 @@ const ScoreBoard = () => {
   const [score, setScore] = useState();
   useEffect(() => {
     if (!score)
-      fetch('/api/score', { headers: { 'Cache-Control': 'no-store' } }).then(res =>
+      fetch('/api/score').then(res =>
         res.json().then(json =>
           setScore(
             json.map((score, i) => (

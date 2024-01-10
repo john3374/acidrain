@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  headers: () => [{ source: '/api/score', headers: [{ key: 'Cache-Control', value: 'no-store' }] }],
   images: {
     remotePatterns: [
       {
