@@ -1,5 +1,5 @@
-import rateLimit from '@/middlewares/rateLimit';
 import { Player } from '@/schema';
+import rateLimit from '@/middlewares/rateLimit';
 import '@/db';
 
 const POST = async req => {
