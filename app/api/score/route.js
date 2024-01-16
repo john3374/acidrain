@@ -2,7 +2,7 @@ import { Score } from '@/schema';
 import rateLimit from '@/middlewares/rateLimit';
 import '@/db';
 
-const GET = async () => {
+const GET = async req => {
   try {
     if (rateLimit(req)) {
       return new Response('Too many requests', {
