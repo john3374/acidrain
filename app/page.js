@@ -8,6 +8,7 @@ import Stopwatch from '@/components/Stopwatch';
 import ScoreBoard from '@/components/ScoreBoard';
 import ButtonLogin from '@/components/ButtonLogin';
 import 'reactjs-popup/dist/index.css';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@radix-ui/react-tabs';
 
 const GAME_STATE = { BEFORE_START: 0, PLAYING: 1, GAME_OVER: 2, READY: 3, WAITING: 4 };
 
@@ -40,7 +41,8 @@ const Home = () => {
     setHideTutorial(localStorage.getItem('hideTutorial') === 'true' || false);
   }, [showPopup]);
 
-  useEffect(() => { console.log('hi')
+  useEffect(() => {
+    console.log('hi');
     setBgWord(localStorage.getItem('wordBgColour') || '#aaa');
   }, [bgWord]);
 
@@ -220,7 +222,34 @@ const Home = () => {
             {close => (
               <div className="modal">
                 <div className="content">
-                  <ScoreBoard />
+                  <Tabs defaultValue="day" className="w-full">
+                    <TabsList className="flex gap-1">
+                      <TabsTrigger value="today" className="button">
+                        오늘
+                      </TabsTrigger>
+                      <TabsTrigger value="week" className="button">
+                        지난 7일
+                      </TabsTrigger>
+                      <TabsTrigger value="month" className="button">
+                        지난 30일
+                      </TabsTrigger>
+                      <TabsTrigger value="all" className="button">
+                        전체
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="today">
+                      <ScoreBoard queryKey={['score-today']} queryFn={() => fetch('/api/score/today').then(res => res.json())} />
+                    </TabsContent>
+                    <TabsContent value="week">
+                      <ScoreBoard queryKey={['score-last-7-days']} queryFn={() => fetch('/api/score/week').then(res => res.json())} />
+                    </TabsContent>
+                    <TabsContent value="month">
+                      <ScoreBoard queryKey={['score-last-month']} queryFn={() => fetch('/api/score/month').then(res => res.json())} />
+                    </TabsContent>
+                    <TabsContent value="all">
+                      <ScoreBoard queryKey={['score-all-time']} queryFn={() => fetch('/api/score').then(res => res.json())} />
+                    </TabsContent>
+                  </Tabs>
                   <button className="button" onClick={() => close()}>
                     닫기
                   </button>

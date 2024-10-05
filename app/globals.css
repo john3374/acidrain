@@ -15,6 +15,7 @@ main{color:#030007;background:#aaa;-webkit-touch-callout:none;-webkit-user-selec
 .button:focus{background:#aaa}
 .button:active{padding:0 .3125em;border-width:.0625rem}
 .button:hover{color:#eee;background-color:#00008b}
+.button[data-state=active]{padding:0 .3125em;border-width:.2rem}
 .dashboard{font-size:1.25em;display:flex;border:.0625rem solid #030007;width:100%}
 .dashboard>*{border:.0625rem solid #030007;border-left:none;padding:.0625rem;box-shadow:-.0625rem -.0625rem #eee;margin-top:.0625rem;margin-left:.0625rem;padding:.125em 0}
 .stats{display:flex;justify-content:space-around;text-wrap:nowrap;width:40%}
@@ -69,8 +70,7 @@ input:focus{outline:0}
 .leaderboard tr{display:flex;justify-content:center}
 .leaderboard tr *{width:100%;text-align:center}
 .leaderboard th{margin:4px 2px;border-style:inset;border:3px solid #555;flex:1}
-.leaderboard th:first-child{border-radius:8px 0 0 0;flex:1.5}
-.leaderboard th:last-child{border-radius:0 8px 0 0}
+.leaderboard th:first-child{flex:1.5}
 .leaderboard td{margin:4px 2px;border-style:outset;border:3px solid #555;overflow:hidden;text-wrap:nowrap;flex:1}
 .leaderboard td:first-child{flex:1.5}
 .tutorial{top:6rem;position:fixed;display:flex;font-family:ChosunGs,serif;font-size:1.5em;justify-content:center;text-align:center;background-color:#777;padding:1.25em;font-size:larger;font-weight:500;box-shadow:-.125rem -.125rem #eee;letter-spacing:.25rem;flex-direction:column;color:#ff0}
@@ -81,3 +81,4 @@ input:focus{outline:0}
 .word-bg.fff{background-color:#fff}
 .word-bg.ccc{background-color:#ccc}
 .word-bg.aaa{background-color:#aaa}
+@layer base{--foreground:60 9.1% 97.8%;--card:20 14.3% 4.1%;--card-foreground:60 9.1% 97.8%;--popover:20 14.3% 4.1%;--popover-foreground:60 9.1% 97.8%;--primary:60 9.1% 97.8%;--primary-foreground:24 9.8% 10%;--secondary:12 6.5% 15.1%;--secondary-foreground:60 9.1% 97.8%;--muted:12 6.5% 15.1%;--muted-foreground:24 5.4% 63.9%;--accent:12 6.5% 15.1%;--accent-foreground:60 9.1% 97.8%;--destructive:0 62.8% 30.6%;--destructive-foreground:60 9.1% 97.8%;--border:12 6.5% 15.1%;--input:12 6.5% 15.1%;--ring:24 5.7% 82.9%;--chart-1:220 70% 50%;--chart-2:160 60% 45%;--chart-3:30 80% 55%;--chart-4:280 65% 60%;--chart-5:340 75% 55%}

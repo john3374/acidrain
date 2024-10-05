@@ -1,4 +1,5 @@
 'user client';
+import { useMutation } from '@tanstack/react-query';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import Image from 'next/image';
 import { useRef, useState } from 'react';
@@ -8,6 +9,15 @@ const ButtonLogin = () => {
   const { data: session, status, update } = useSession();
   const inputRef = useRef();
   const [nickErr, setNickErr] = useState();
+
+  const { mutate: udpateNickname } = useMutation({
+    mutationKey: 'update-nickname',
+    mutationFn: ({ nickname }) =>
+      fetch('/api/player/checkNickname', {
+        method: 'POST',
+        body: JSON.stringify({ nickname }),
+      }).then(res => res.json()),
+  });
 
   const resetClose = close => {
     setNickErr('');
@@ -43,15 +53,14 @@ const ButtonLogin = () => {
                     setNickErr('별명은 최대 7글자 입니다.');
                     return;
                   }
-                  const res = await fetch('/api/player/checkNickname', {
-                    method: 'POST',
-                    body: JSON.stringify({ nickname }),
-                  });
-                  const { result } = await res.json();
-                  if (result) {
-                    update({ nickname });
-                    resetClose(close);
-                  } else setNickErr('이미 사용중인 별명입니다.');
+                  udpateNickname(
+                    { nickname },
+                    {
+                      onSuccess: () => update({ nickname }),
+                      onError: err => setNickErr('이미 사용중인 별명입니다.'),
+                      onSettled: () => resetClose(close),
+                    }
+                  );
                 }}
               >
                 <div>
