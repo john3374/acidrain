@@ -1,4 +1,5 @@
-const { Schema } = require('mongoose');
+import mongoose from 'mongoose';
+const { Schema } = mongoose;
 
 const gameSchema = new Schema(
   {
@@ -16,4 +17,4 @@ const gameSchema = new Schema(
     optimisticConcurrency: true,
   }
 );
-module.exports = gameSchema;
+export default gameSchema;

@@ -1,14 +1,17 @@
 'use client';
-import Popup from 'reactjs-popup';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@radix-ui/react-tabs';
+import { useSession } from 'next-auth/react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
-import { useSession } from 'next-auth/react';
-import { socket, clientId } from '@/components/socket';
-import Stopwatch from '@/components/Stopwatch';
-import ScoreBoard from '@/components/ScoreBoard';
+
 import ButtonLogin from '@/components/ButtonLogin';
+import ScoreBoard from '@/components/ScoreBoard';
+import { clientId, socket } from '@/components/socket';
+import Stopwatch from '@/components/Stopwatch';
 import 'reactjs-popup/dist/index.css';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@radix-ui/react-tabs';
+
+const Popup = dynamic(() => import('reactjs-popup'), { ssr: false });
 
 const GAME_STATE = { BEFORE_START: 0, PLAYING: 1, GAME_OVER: 2, READY: 3, WAITING: 4 };
 
@@ -27,6 +30,7 @@ const Home = () => {
   const [hideTutorial, setHideTutorial] = useState(false);
   const [online, setOnline] = useState(false);
   const [bgWord, setBgWord] = useState('#aaa');
+  const [showLevelSelect, setShowLevelSelect] = useState(false);
   const { data: session } = useSession();
 
   useEffect(() => {
@@ -42,9 +46,13 @@ const Home = () => {
   }, [showPopup]);
 
   useEffect(() => {
-    console.log('hi');
     setBgWord(localStorage.getItem('wordBgColour') || '#aaa');
   }, [bgWord]);
+
+  useEffect(() => {
+    setTitleText(`랜덤타자연습 (놀이마당 ${stat.level})`);
+    setPopupText(`${stat.level}  놀 이 마 당`);
+  }, [stat.level]);
 
   useEffect(() => {
     const ctx = canvasRef.current.getContext('2d');
@@ -52,7 +60,7 @@ const Home = () => {
       setTimeout(() => {
         if (socket.connected && gameState == GAME_STATE.BEFORE_START) {
           socket.emit('init', { clientId, width: canvasRef.current.offsetWidth, charWidth: ctx.measureText('글').width });
-          initGame();
+          setShowLevelSelect(true);
           setOnline(true);
         }
       }, 2000);
@@ -75,19 +83,19 @@ const Home = () => {
     game.forEach(pos => {
       const metrics = ctx.measureText(pos.word);
       ctx.fillStyle = bgWord;
-      ctx.fillRect((gw - 108) * pos.x, (pos.y / 25) * gh, metrics.width, metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent);
+      ctx.fillRect((gw - 108) * pos.x, ((pos.y - 2) / 25) * gh, metrics.width, metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent);
       ctx.fillStyle = '#000';
-      ctx.fillText(pos.word, (gw - 108) * pos.x, (pos.y / 25) * gh + 20);
+      ctx.fillText(pos.word, (gw - 108) * pos.x, ((pos.y - 2) / 25) * gh + 20);
     });
 
     socket.on('disconnect', () => {
       setFooterText('연결 없음');
     });
     socket.on('state', cmd => {
-      console.log('state', cmd);
       switch (cmd) {
         case 'restart':
           setGameState(GAME_STATE.BEFORE_START);
+          setShowLevelSelect(true);
           break;
         case 'sReady':
           switch (gameState) {
@@ -107,8 +115,12 @@ const Home = () => {
           setShowPopup(true);
           setFooterText('');
           setGameState(GAME_STATE.GAME_OVER);
-          resetGame();
-          setTimeout(() => initGame(), 4000);
+          setTimeout(() => {
+            setShowPopup(false);
+            resetGame();
+            setShowLevelSelect(true);
+            setGameState(GAME_STATE.BEFORE_START);
+          }, 4000);
           break;
       }
     });
@@ -125,7 +137,7 @@ const Home = () => {
             accuracy: correct + incorrect !== 0 ? Math.round((correct / (correct + incorrect)) * 100) : 0,
           })
         );
-        setGame(position);
+        setGame(position.filter(p => p.y > 1));
       } else if (gameState === GAME_STATE.GAME_OVER)
         setStat(
           Object.assign(stat, {
@@ -147,11 +159,16 @@ const Home = () => {
   };
 
   const initGame = () => {
-    setTitleText(`랜덤타자연습 (놀이마당 ${stat.level})`);
-    setPopupText(`${stat.level}  놀 이 마 당`);
     setShowPopup(true);
     setFooterText('사이띄개를 누르세요');
     setGameState(GAME_STATE.READY);
+  };
+
+  const handleLevelSelect = level => {
+    setStat(prev => ({ ...prev, level }));
+    socket.emit('startLevel', level);
+    setShowLevelSelect(false);
+    initGame();
   };
 
   const populateLife = () => {
@@ -172,7 +189,7 @@ const Home = () => {
         );
     return bar;
   };
-  const inputChangeHandler = e => setInput(e.target.value);
+
   const inputHandler = e => {
     if (e.nativeEvent.isComposing === false) {
       let code = e.keyCode || e.which;
@@ -315,6 +332,44 @@ const Home = () => {
           </div>
         </div>
       </div>
+      <Popup
+        contentStyle={{ width: '30rem' }}
+        defaultOpen={true}
+        open={showLevelSelect}
+        onClose={() => setShowLevelSelect(false)}
+        closeOnDocumentClick={false}
+        modal
+        nested
+      >
+        {close => (
+          <div className="level-select-window">
+            <div className="title">
+              <div className="title-text">
+                <Image className="logo" src="/title.png" alt="logo" width={36} height={30} />
+                <span className="titleText">놀이마당</span>
+              </div>
+              <button className="button quit" onClick={close}>
+                X
+              </button>
+            </div>
+            <div className="level-select-content">
+              <fieldset className="level-select-header">
+                <legend className="level-select-header-legend">&nbsp;마당</legend>
+                <div className="level-select-list">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(level => (
+                    <button key={level} className="level-select-item" onClick={() => handleLevelSelect(level)}>
+                      {level} 놀이마당
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            </div>
+            <div className="level-select-footer">
+              <div className="level-select-footer-text">놀이의 마당을 선택하세요</div>
+            </div>
+          </div>
+        )}
+      </Popup>
       {showPopup && (
         <div className="popup-container" onClick={() => inputRef.current.focus()}>
           {!hideTutorial && (

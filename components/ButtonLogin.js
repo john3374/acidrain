@@ -1,9 +1,11 @@
-'user client';
+'use client';
 import { useMutation } from '@tanstack/react-query';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { useRef, useState } from 'react';
-import Popup from 'reactjs-popup';
+
+const Popup = dynamic(() => import('reactjs-popup'), { ssr: false });
 
 const ButtonLogin = () => {
   const { data: session, status, update } = useSession();

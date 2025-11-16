@@ -1,8 +1,12 @@
-require('dotenv').config();
-require('../db');
-const Game = require('./Game');
-const server = require('http').createServer();
-const io = require('socket.io')(server, { cors: { origin: '*', method: ['GET', 'POST'] } });
+import dotenv from 'dotenv';
+dotenv.config();
+import '../db.js';
+import Game from './Game.js';
+import http from 'http';
+import { Server } from 'socket.io';
+
+const server = http.createServer();
+const io = new Server(server, { cors: { origin: '*', method: ['GET', 'POST'] } });
 const games = {};
 
 io.on('connection', client => {
@@ -11,7 +15,7 @@ io.on('connection', client => {
     console.log(id);
     client.playerId = id;
   });
-  client.on('init', ({ clientId, width, charWidth }) => {
+  client.on('init', ({ clientId, width, charWidth, level = 1 }) => {
     client.width = width;
     client.charWidth = charWidth;
     if (!client.gameId) client.gameId = clientId;
@@ -19,9 +23,19 @@ io.on('connection', client => {
     if (game) {
       if (!game.ready) game.stop();
       game.resetGame();
+      game.level = level;
     } else {
       client.gameId = clientId;
-      games[clientId] = new Game(client);
+      games[clientId] = new Game(client, level);
+    }
+  });
+  client.on('startLevel', level => {
+    const game = games[client.gameId];
+    if (game) {
+      game.resetGame();
+      game.level = level;
+      game.score = 10 + level * 850;
+      console.log('set level to', game.level);
     }
   });
   client.on('state', cmd => {

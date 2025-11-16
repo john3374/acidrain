@@ -1,5 +1,6 @@
-const { randomBytes } = require('crypto');
-const { Schema } = require('mongoose');
+import { randomBytes } from 'crypto';
+import mongoose from 'mongoose';
+const { Schema } = mongoose;
 
 const playerSchema = new Schema(
   {
@@ -11,4 +12,4 @@ const playerSchema = new Schema(
     optimisticConcurrency: true,
   }
 );
-module.exports = playerSchema;
+export default playerSchema;

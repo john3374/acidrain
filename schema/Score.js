@@ -1,4 +1,5 @@
-const { Schema } = require('mongoose');
+import mongoose from 'mongoose';
+const { Schema } = mongoose;
 
 const scoreSchema = new Schema(
   {
@@ -10,4 +11,4 @@ const scoreSchema = new Schema(
     optimisticConcurrency: true,
   }
 );
-module.exports = scoreSchema;
+export default scoreSchema;

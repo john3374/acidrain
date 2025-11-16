@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 const start = Date.now();
 const Stopwatch = () => {
   const [time, setTime] = useState(0);

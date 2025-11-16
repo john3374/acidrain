@@ -1,6 +1,7 @@
-const { Schema } = require('mongoose');
+import mongoose from 'mongoose';
+const { Schema } = mongoose;
 
 const wordSchema = new Schema({
   word: [{ type: String, unique: true }],
 });
-module.exports = wordSchema;
+export default wordSchema;

@@ -1,15 +1,43 @@
-const ObjectId = require('mongodb').ObjectId;
-const { Game: GameDB, Word, Score } = require('../schema');
-const { simpleFaker } = require('@faker-js/faker');
+import crypto from 'crypto';
+import mongoose from 'mongoose';
+import { Game as GameDB, Score, Word } from '../schema/index.js';
+
+const { ObjectId } = mongoose.Types;
+
+// Seeded PRNG using Mulberry32 algorithm for better randomness
+class SeededRandom {
+  constructor(seed) {
+    this.seed = seed || this.#generateSeed();
+    this.state = this.seed;
+  }
+
+  #generateSeed() {
+    // Use crypto for cryptographically secure random seed
+    return crypto.randomInt(0, 0xffffffff);
+  }
+
+  // Generate random float between 0 and 1
+  float() {
+    this.state = (this.state + 0x6d2b79f5) | 0;
+    let t = Math.imul(this.state ^ (this.state >>> 15), this.state | 1);
+    t = (t + Math.imul(t ^ (t >>> 7), t | 61)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  // Get current seed value
+  getSeed() {
+    return this.seed;
+  }
+}
 
 class Game {
   #client;
   #position;
   #loopId;
-  #lastTime;
   #dropOffset;
   #nextQueue;
   #dropSpeed;
+  #random;
 
   constructor(client, level = 1) {
     this.#client = client;
@@ -17,7 +45,7 @@ class Game {
     this.#populateWords();
     this.ready = false;
     this.#position = [];
-    this.#dropOffset = 0;
+    this.#dropOffset = 1;
     this.life = 18;
     this.correct = 0;
     this.incorrect = 0;
@@ -27,10 +55,10 @@ class Game {
     this.row = [];
     this.#nextQueue = [];
     this.#dropSpeed = 0;
-    simpleFaker.seed(Math.ceil(Math.random() * Number.MAX_SAFE_INTEGER));
+    this.#random = new SeededRandom();
     GameDB.updateOne(
       { gameId: client.gameId },
-      { $set: { correct: this.correct, incorrect: this.incorrect, life: this.life, seed: simpleFaker.seed(), score: this.score } },
+      { $set: { correct: this.correct, incorrect: this.incorrect, life: this.life, seed: this.#random.getSeed(), score: this.score } },
       { upsert: true }
     ).catch(err => {
       console.log('failed to upsert game');
@@ -48,7 +76,7 @@ class Game {
         }
       }
       this.incorrect++;
-      this.score--;
+      this.score = Math.max(0, this.score - 1);
       client.emit('game', this.getState());
     });
   }
@@ -100,21 +128,19 @@ class Game {
       }
     }
     this.#nextQueue.push(word);
-    this.#lastTime = 0;
     this.#dropOffset = 1;
   }
   #pushWord(word, x) {
     this.#position.push({ x: x, y: 0, word });
     this.#client.emit('game', this.getState());
-    this.#dropOffset = 0;
+    this.#dropOffset = 0.2;
   }
   #gameUpdate() {
     this.#loopId = setTimeout(() => {
-      const now = Date.now();
       if (this.words.length > 0) {
-        if (simpleFaker.number.float() < this.#dropOffset) {
+        if (this.#random.float() < this.#dropOffset) {
           const word = this.#nextQueue.length > 0 ? this.#nextQueue.shift() : this.words.shift();
-          const pos = simpleFaker.number.float();
+          const pos = this.#random.float();
           const isOverflow = pos * this.width + word.length * this.charWidth > this.width;
           this.#checkOverlap(
             word,
@@ -122,35 +148,29 @@ class Game {
             isOverflow ? this.width : pos * this.width + word.length * this.charWidth
           );
         }
-        this.#dropOffset += 0.0005 * this.level;
+        this.#dropOffset += Math.sqrt(this.level) / Math.min(this.level * 10, 90);
       } else if (this.#position.length === 0) {
         this.level++;
         this.#client.emit('game', this.getState());
         this.stop();
         return;
       }
-      if (now - this.#lastTime > this.#dropSpeed) {
-        if (this.#position.length === 0) this.#dropOffset *= 2;
-        else {
-          for (let i = 0; i < this.#position.length; i++) {
-            if (++this.#position[i].y >= 25) {
-              this.#position.splice(i--, 1);
-              if (--this.life < 0) {
-                this.#client.emit('state', 'gameover');
-                this.stop();
-                this.recordScore();
-                this.resetGame();
-                return;
-              }
-            }
+      for (let i = 0; i < this.#position.length; i++) {
+        if (++this.#position[i].y >= 26) {
+          this.#position.splice(i--, 1);
+          if (--this.life < 0) {
+            this.#client.emit('state', 'gameover');
+            this.stop();
+            this.recordScore();
+            this.resetGame();
+            return;
           }
-          this.row = [];
         }
-        this.#lastTime = now;
-        this.#client.emit('game', this.getState());
       }
+      this.row = [];
+      this.#client.emit('game', this.getState());
       this.#gameUpdate();
-    }, 30);
+    }, this.#dropSpeed);
   }
 
   getState() {
@@ -158,11 +178,10 @@ class Game {
   }
 
   start() {
-    console.log(this.#client.gameId, 'start');
-    this.#lastTime = Date.now();
     this.width = this.#client.width;
     this.charWidth = this.#client.charWidth;
-    this.#dropSpeed = Math.max(184, 3000 - this.level * 256);
+    this.#dropSpeed = Math.max(184, 2200 - this.level * 200);
+    console.log('start', this.#client.gameId, 'speed:', this.#dropSpeed);
     this.#gameUpdate();
   }
 
@@ -179,10 +198,9 @@ class Game {
       { $set: { correct: this.correct, incorrect: this.incorrect, life: this.life, score: this.score } },
       { upsert: true }
     ).catch(err => console.log('failed to update game', err));
-    if (this.#client.playerId) {
-      const score = new Score({ score: this.score, player: new ObjectId(this.#client.playerId) });
-      score.save().catch(err => console.log(err));
-    } else console.log("player doesn't exist");
+    const score = new Score({ score: this.score });
+    if (this.#client.playerId) score.player = new ObjectId(String(this.#client.playerId));
+    score.save().catch(err => console.log(err));
   }
 
   resetGame() {
@@ -191,6 +209,7 @@ class Game {
     this.incorrect = 0;
     this.life = 18;
     this.level = 1;
+    this.#dropOffset = 1;
   }
 
   status() {
@@ -198,4 +217,4 @@ class Game {
   }
 }
 
-module.exports = Game;
+export default Game;

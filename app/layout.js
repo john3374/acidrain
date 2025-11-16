@@ -1,7 +1,6 @@
-import { Inter } from 'next/font/google';
-import './globals.css';
 import NextAuthProvider from '@/components/NextAuthProvider';
 import '@/db';
+import './globals.css';
 
 export const metadata = {
   title: '랜덤타자연습',
