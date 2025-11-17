@@ -56,6 +56,7 @@ class Game {
     this.#nextQueue = [];
     this.#dropSpeed = 0;
     this.#random = new SeededRandom();
+    this.bonus = 0;
     GameDB.updateOne(
       { gameId: client.gameId },
       { $set: { correct: this.correct, incorrect: this.incorrect, life: this.life, seed: this.#random.getSeed(), score: this.score } },
@@ -189,6 +190,10 @@ class Game {
     clearTimeout(this.#loopId);
     this.#position = [];
     this.ready = false;
+    if (this.bonus > 0) {
+      this.score += this.bonus;
+      this.bonus = 0;
+    }
     this.#populateWords();
   }
 

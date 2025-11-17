@@ -3,8 +3,8 @@ import '@/db';
 import './globals.css';
 
 export const metadata = {
-  title: '랜덤타자연습',
-  description: '추억의 산성비 타자연습 게임',
+  title: '타자연습',
+  description: '추억의 산성비 타자연습 놀이',
 };
 // <meta name="google-signin-client_id" content="383578851033-0c7215q3in0pdk6k3rlcllr179bl56cu.apps.googleusercontent.com" />
 

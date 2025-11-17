@@ -34,7 +34,8 @@ io.on('connection', client => {
     if (game) {
       game.resetGame();
       game.level = level;
-      game.score = 10 + level * 850;
+      game.score = 10;
+      game.bonus = (level - 1) * 850;
       console.log('set level to', game.level);
     }
   });

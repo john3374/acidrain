@@ -39,9 +39,19 @@ const ButtonLogin = () => {
         }
         modal
         nested
+        closeOnDocumentClick={false}
       >
         {close => (
-          <div className="modal">
+          <div className="level-select-window">
+            <div className="title">
+              <div className="title-text">
+                <Image className="logo" src="/title.png" alt="logo" width={36} height={30} />
+                <span className="titleText">프로필</span>
+              </div>
+              <button className="button quit" onClick={close}>
+                X
+              </button>
+            </div>
             <div className="content">
               <form
                 onSubmit={async e => {
@@ -67,7 +77,7 @@ const ButtonLogin = () => {
               >
                 <div>
                   별명
-                  <input ref={inputRef} defaultValue={session.user.nickname} maxLength={7} />
+                  <input ref={inputRef} className="p-1 border-2 border-black" defaultValue={session.user.nickname} maxLength={7} />
                 </div>
                 <p className="nick-error">{nickErr}</p>
                 <div className="modal-button">

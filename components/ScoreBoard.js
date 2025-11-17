@@ -36,12 +36,14 @@ const ScoreBoard = ({ queryKey, queryFn }) => {
 
   return (
     <table className="leaderboard">
-      <tr>
-        <th>이름</th>
-        <th>점수</th>
-        <th>일자</th>
-      </tr>
-      {getTableData()}
+      <thead>
+        <tr>
+          <th>이름</th>
+          <th>점수</th>
+          <th>일자</th>
+        </tr>
+      </thead>
+      <tbody>{getTableData()}</tbody>
     </table>
   );
 };

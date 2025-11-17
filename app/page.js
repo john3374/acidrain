@@ -19,7 +19,7 @@ const Home = () => {
   const inputRef = useRef(null);
   const canvasRef = useRef(null);
   const [input, setInput] = useState('');
-  const [showPopup, setShowPopup] = useState(false);
+  const [showPopup, setShowPopup] = useState({ game: false, levelSelect: false, score: false, settings: false, profile: false });
   const [popupText, setPopupText] = useState('');
   const [titleText, setTitleText] = useState('랜덤타자연습');
   const [footerText, setFooterText] = useState('연결 없음');
@@ -30,8 +30,7 @@ const Home = () => {
   const [hideTutorial, setHideTutorial] = useState(false);
   const [online, setOnline] = useState(false);
   const [bgWord, setBgWord] = useState('#aaa');
-  const [showLevelSelect, setShowLevelSelect] = useState(false);
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   useEffect(() => {
     if (gameState === GAME_STATE.PLAYING) {
@@ -43,7 +42,7 @@ const Home = () => {
 
   useEffect(() => {
     setHideTutorial(localStorage.getItem('hideTutorial') === 'true' || false);
-  }, [showPopup]);
+  }, [showPopup.game]);
 
   useEffect(() => {
     setBgWord(localStorage.getItem('wordBgColour') || '#aaa');
@@ -60,7 +59,8 @@ const Home = () => {
       setTimeout(() => {
         if (socket.connected && gameState == GAME_STATE.BEFORE_START) {
           socket.emit('init', { clientId, width: canvasRef.current.offsetWidth, charWidth: ctx.measureText('글').width });
-          setShowLevelSelect(true);
+          setShowPopup(prev => ({ ...prev, levelSelect: true }));
+          setFooterText('');
           setOnline(true);
         }
       }, 2000);
@@ -95,7 +95,8 @@ const Home = () => {
       switch (cmd) {
         case 'restart':
           setGameState(GAME_STATE.BEFORE_START);
-          setShowLevelSelect(true);
+          setShowPopup(prev => ({ ...prev, levelSelect: true }));
+          setFooterText('사이띄개를 누르세요');
           break;
         case 'sReady':
           switch (gameState) {
@@ -105,20 +106,19 @@ const Home = () => {
           }
           break;
         case 'play':
-          setShowPopup(false);
+          setShowPopup(prev => ({ ...prev, game: false }));
           setFooterText('');
           setGameState(GAME_STATE.PLAYING);
           break;
         case 'gameover':
           setPopupColour('yellow');
           setPopupText('놀이가 끝났습니다.');
-          setShowPopup(true);
+          setShowPopup(prev => ({ ...prev, game: true }));
           setFooterText('');
           setGameState(GAME_STATE.GAME_OVER);
           setTimeout(() => {
-            setShowPopup(false);
             resetGame();
-            setShowLevelSelect(true);
+            setShowPopup(prev => ({ ...prev, levelSelect: true, game: false }));
             setGameState(GAME_STATE.BEFORE_START);
           }, 4000);
           break;
@@ -159,7 +159,7 @@ const Home = () => {
   };
 
   const initGame = () => {
-    setShowPopup(true);
+    setShowPopup(prev => ({ ...prev, game: true }));
     setFooterText('사이띄개를 누르세요');
     setGameState(GAME_STATE.READY);
   };
@@ -167,7 +167,7 @@ const Home = () => {
   const handleLevelSelect = level => {
     setStat(prev => ({ ...prev, level }));
     socket.emit('startLevel', level);
-    setShowLevelSelect(false);
+    setShowPopup(prev => ({ ...prev, levelSelect: false }));
     initGame();
   };
 
@@ -235,11 +235,27 @@ const Home = () => {
           <span id="titleText">{titleText}</span>
         </div>
         <div className="profile">
-          <Popup trigger={<button className="button">점수 보기</button>} modal nested>
+          <Popup
+            trigger={<button className="button">점수 보기</button>}
+            modal
+            nested
+            open={showPopup.score}
+            onClose={() => setShowPopup(prev => ({ ...prev, score: false }))}
+            closeOnDocumentClick={false}
+          >
             {close => (
-              <div className="modal">
+              <div className="level-select-window">
+                <div className="title">
+                  <div className="title-text">
+                    <Image className="logo" src="/title.png" alt="logo" width={36} height={30} />
+                    <span className="titleText">점수 보기</span>
+                  </div>
+                  <button className="button quit" onClick={close}>
+                    X
+                  </button>
+                </div>
                 <div className="content">
-                  <Tabs defaultValue="day" className="w-full">
+                  <Tabs defaultValue="today" className="w-full" style={{ marginTop: '.5rem' }}>
                     <TabsList className="flex gap-1">
                       <TabsTrigger value="today" className="button">
                         오늘
@@ -267,16 +283,29 @@ const Home = () => {
                       <ScoreBoard queryKey={['score-all-time']} queryFn={() => fetch('/api/score').then(res => res.json())} />
                     </TabsContent>
                   </Tabs>
-                  <button className="button" onClick={() => close()}>
-                    닫기
-                  </button>
                 </div>
               </div>
             )}
           </Popup>
-          <Popup trigger={<button className="button">설정</button>} modal nested>
+          <Popup
+            trigger={<button className="button">설정</button>}
+            modal
+            nested
+            open={showPopup.settings}
+            onClose={() => setShowPopup(prev => ({ ...prev, settings: false }))}
+            closeOnDocumentClick={false}
+          >
             {close => (
-              <div className="modal">
+              <div className="level-select-window">
+                <div className="title">
+                  <div className="title-text">
+                    <Image className="logo" src="/title.png" alt="logo" width={36} height={30} />
+                    <span className="titleText">점수 보기</span>
+                  </div>
+                  <button className="button quit" onClick={close}>
+                    X
+                  </button>
+                </div>
                 <div className="content">
                   <div className="word-bg-picker">
                     단어 배경색:
@@ -285,9 +314,6 @@ const Home = () => {
                     <button className={`word-bg fff${bgWord === '#fff' ? ' active' : ''}`} onClick={() => handleColourChange('#fff')}></button>
                   </div>
                   <hr />
-                  <button className="button" onClick={() => close()}>
-                    닫기
-                  </button>
                 </div>
               </div>
             )}
@@ -335,22 +361,19 @@ const Home = () => {
       <Popup
         contentStyle={{ width: '30rem' }}
         defaultOpen={true}
-        open={showLevelSelect}
-        onClose={() => setShowLevelSelect(false)}
+        open={showPopup.levelSelect}
+        onClose={() => setShowPopup(prev => ({ ...prev, levelSelect: false }))}
         closeOnDocumentClick={false}
         modal
         nested
       >
-        {close => (
+        {() => (
           <div className="level-select-window">
             <div className="title">
               <div className="title-text">
                 <Image className="logo" src="/title.png" alt="logo" width={36} height={30} />
                 <span className="titleText">놀이마당</span>
               </div>
-              <button className="button quit" onClick={close}>
-                X
-              </button>
             </div>
             <div className="level-select-content">
               <fieldset className="level-select-header">
@@ -370,28 +393,29 @@ const Home = () => {
           </div>
         )}
       </Popup>
-      {showPopup && (
+      {showPopup.game && (
         <div className="popup-container" onClick={() => inputRef.current.focus()}>
-          {!hideTutorial && (
-            <div className="tutorial">
-              로그인을 하시면
-              <br />
-              점수를 기록하실 수 있습니다.
-              <br />
-              로그인을 위해 이메일만 수집합니다.
-              <br />
-              탈퇴시 이메일과 기록은 삭제됩니다.
-              <button
-                className="button"
-                onClick={() => {
-                  localStorage.setItem('hideTutorial', true);
-                  setHideTutorial(true);
-                }}
-              >
-                다시 보지 않기
-              </button>
-            </div>
-          )}
+          {!hideTutorial ||
+            (status !== 'authenticated' && (
+              <div className="tutorial">
+                로그인을 하시면
+                <br />
+                점수를 기록하실 수 있습니다.
+                <br />
+                로그인을 위해 이메일만 수집합니다.
+                <br />
+                탈퇴시 이메일과 기록은 삭제됩니다.
+                <button
+                  className="button"
+                  onClick={() => {
+                    localStorage.setItem('hideTutorial', true);
+                    setHideTutorial(true);
+                  }}
+                >
+                  다시 보지 않기
+                </button>
+              </div>
+            ))}
           <div id="gameover" className={popupColour}>
             {popupText}
           </div>
