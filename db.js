@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 
 const DEFAULT_DB_NAME = 'acidrain';
+const DEFAULT_SERVER_SELECTION_TIMEOUT_MS = 5000;
+const DEFAULT_CONNECT_TIMEOUT_MS = 5000;
 
 const getRequiredEnv = name => {
   const value = process.env[name];
@@ -23,10 +25,17 @@ const buildMongoUri = () => {
   return `${protocol}://${username}:${password}@${host}/${dbName}`;
 };
 
+const getPositiveInteger = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
+
 const getConnectionOptions = () => {
   const certificateKeyFile = process.env.MONGODB_X509_CERTIFICATE_KEY_FILE;
   const options = {
     autoIndex: process.env.NODE_ENV !== 'production',
+    serverSelectionTimeoutMS: getPositiveInteger(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS, DEFAULT_SERVER_SELECTION_TIMEOUT_MS),
+    connectTimeoutMS: getPositiveInteger(process.env.MONGODB_CONNECT_TIMEOUT_MS, DEFAULT_CONNECT_TIMEOUT_MS),
   };
 
   if (certificateKeyFile) {
@@ -58,6 +67,7 @@ export const connectDB = async () => {
     return globalForMongoose.mongooseConnection.conn;
   } catch (error) {
     globalForMongoose.mongooseConnection.promise = null;
+    error.message = `MongoDB connection failed: ${error.message}`;
     throw error;
   }
 };
