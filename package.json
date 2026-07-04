@@ -17,7 +17,8 @@
     "build": "next build",
     "start": "next start -p 4001",
     "lint": "eslint .",
-    "wss": "node wss/wss"
+    "wss": "node wss/wss",
+    "postbuild": "find .next/static -type d -exec chmod 755 {} + && find .next/static -type f -exec chmod 644 {} +"
   },
   "dependencies": {
     "@radix-ui/react-icons": "^1.3.2",
