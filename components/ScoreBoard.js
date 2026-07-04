@@ -8,13 +8,13 @@ const ScoreBoard = ({ queryKey, queryFn }) => {
       case 'pending':
         return (
           <tr>
-            <td colspan={3}>로딩중...</td>
+            <td colSpan={3}>로딩중...</td>
           </tr>
         );
       case 'error':
         return (
           <tr>
-            <td colspan={3}>에러가 발생했습니다.</td>
+            <td colSpan={3}>에러가 발생했습니다.</td>
           </tr>
         );
       case 'success':
@@ -28,7 +28,7 @@ const ScoreBoard = ({ queryKey, queryFn }) => {
           ))
         ) : (
           <tr>
-            <td colspan={3}>점수가 없습니다.</td>
+            <td colSpan={3}>점수가 없습니다.</td>
           </tr>
         );
     }

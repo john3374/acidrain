@@ -2,8 +2,9 @@ import NextAuth from 'next-auth';
 import DiscordProvider from 'next-auth/providers/discord';
 import GoogleProvider from 'next-auth/providers/google';
 import GithubProvider from 'next-auth/providers/github';
-import '@/db';
+import { connectDB } from '@/db';
 import { Player, Score } from '@/schema';
+import { validateNickname } from '@/lib/nickname';
 
 const handler = NextAuth({
   // logger: {
@@ -34,6 +35,7 @@ const handler = NextAuth({
   ],
   callbacks: {
     async signIn({ user }) {
+      await connectDB();
       const updatedUser = await Player.findOneAndUpdate({ email: user.email }, {}, { upsert: true, new: true });
       user.nickname = updatedUser.nickname;
       user.id = updatedUser._id.toString();
@@ -51,6 +53,7 @@ const handler = NextAuth({
       if (params.trigger === 'update') {
         if (params.session.delete === 1) {
           try {
+            await connectDB();
             const deleted = await Player.findOneAndDelete({ email: params.token.email });
             Score.deleteMany({ player: deleted._id }).catch(err => console.log('failed to delete scores', err));
             return {};
@@ -58,8 +61,12 @@ const handler = NextAuth({
             console.log(e);
           }
         } else if (params.session.nickname) {
-          params.token.nickname = params.session.nickname.substring(0, 7);
-          Player.findOneAndUpdate({ email: params.token.email }, { $set: { nickname: params.session.nickname } }).catch(err =>
+          const parsed = validateNickname(params.session.nickname);
+          if (!parsed.valid) return { ...params.token };
+
+          await connectDB();
+          params.token.nickname = parsed.value;
+          Player.findOneAndUpdate({ email: params.token.email }, { $set: { nickname: parsed.value } }).catch(err =>
             console.log('failed to change nickname', err)
           );
         }

@@ -1,19 +1,17 @@
 import { Score } from '@/schema';
 import rateLimit from '@/middlewares/rateLimit';
-import '@/db';
+import { connectDB } from '@/db';
+
+export const dynamic = 'force-dynamic';
 
 const GET = async req => {
   try {
-    if (rateLimit(req)) {
-      return new Response('Too many requests', {
-        status: 429,
-        // headers: {
-        //   'X-RateLimit-Limit': limit.toString(),
-        //   'X-RateLimit-Remaining': 0,
-        //   'X-RateLimit-Reset': reset.toString(),
-        // },
-      });
+    const limit = rateLimit(req);
+    if (limit.limited) {
+      return new Response('Too many requests', { status: 429, headers: limit.headers });
     }
+
+    await connectDB();
     const startOf7DaysAgo = new Date();
     startOf7DaysAgo.setDate(new Date().getDate() - 7);
     startOf7DaysAgo.setHours(0, 0, 0, 0);
@@ -23,7 +21,7 @@ const GET = async req => {
       score: score.score,
       created: score.created,
     }));
-    return Response.json(result);
+    return Response.json(result, { headers: limit.headers });
   } catch (e) {
     console.log(e);
     return new Response('Unknown error', { status: 500 });

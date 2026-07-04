@@ -32,7 +32,7 @@ const ButtonLogin = () => {
     return (
       <Popup
         trigger={
-          <button className="profile button">
+          <button type="button" className="profile button">
             <Image src={session.user.image} alt="player image" width={16} height={16} className="circle" />
             {` ${session.user.nickname || '사용자'}`}
           </button>
@@ -48,7 +48,7 @@ const ButtonLogin = () => {
                 <Image className="logo" src="/title.png" alt="logo" width={36} height={30} />
                 <span className="titleText">프로필</span>
               </div>
-              <button className="button quit" onClick={close}>
+              <button type="button" className="button quit" aria-label="닫기" onClick={close}>
                 X
               </button>
             </div>
@@ -88,11 +88,12 @@ const ButtonLogin = () => {
                     취소
                   </button>
                   <hr />
-                  <button className="button" onClick={() => signOut()}>
+                  <button type="button" className="button" onClick={() => signOut()}>
                     로그아웃
                   </button>
                   <hr />
                   <button
+                    type="button"
                     className="button"
                     onClick={() => {
                       signOut();
@@ -111,6 +112,7 @@ const ButtonLogin = () => {
   }
   return (
     <button
+      type="button"
       className="button"
       onClick={e => {
         e.preventDefault();

@@ -18,40 +18,32 @@ const GAME_STATE = { BEFORE_START: 0, PLAYING: 1, GAME_OVER: 2, READY: 3, WAITIN
 const Home = () => {
   const inputRef = useRef(null);
   const canvasRef = useRef(null);
-  const [input, setInput] = useState('');
   const [showPopup, setShowPopup] = useState({ game: false, levelSelect: false, score: false, settings: false, profile: false });
-  const [popupText, setPopupText] = useState('');
-  const [titleText, setTitleText] = useState('랜덤타자연습');
+  const [popupText, setPopupText] = useState('1  놀 이 마 당');
   const [footerText, setFooterText] = useState('연결 없음');
   const [popupColour, setPopupColour] = useState('');
   const [stat, setStat] = useState({ level: 1, correct: 0, incorrect: 0, accuracy: 0, score: 10, life: 18 });
   const [game, setGame] = useState([]);
   const [gameState, setGameState] = useState(0);
-  const [hideTutorial, setHideTutorial] = useState(false);
+  const [hideTutorial, setHideTutorial] = useState(() =>
+    typeof window === 'undefined' ? false : localStorage.getItem('hideTutorial') === 'true'
+  );
   const [online, setOnline] = useState(false);
-  const [bgWord, setBgWord] = useState('#aaa');
+  const [bgWord, setBgWord] = useState(() => (typeof window === 'undefined' ? '#aaa' : localStorage.getItem('wordBgColour') || '#aaa'));
   const { data: session, status } = useSession();
+  const titleText = `랜덤타자연습 (놀이마당 ${stat.level})`;
 
-  useEffect(() => {
-    if (gameState === GAME_STATE.PLAYING) {
-      const trimmed = input.trim();
-      if (trimmed) socket.emit('game', trimmed);
-      inputRef.current.value = '';
-    }
-  }, [input]);
+  const resetGame = () => {
+    setGame([]);
+    setStat({ level: 1, correct: 0, incorrect: 0, accuracy: 0, score: 10, life: 18 });
+  };
 
-  useEffect(() => {
-    setHideTutorial(localStorage.getItem('hideTutorial') === 'true' || false);
-  }, [showPopup.game]);
-
-  useEffect(() => {
-    setBgWord(localStorage.getItem('wordBgColour') || '#aaa');
-  }, [bgWord]);
-
-  useEffect(() => {
-    setTitleText(`랜덤타자연습 (놀이마당 ${stat.level})`);
-    setPopupText(`${stat.level}  놀 이 마 당`);
-  }, [stat.level]);
+  const initGame = level => {
+    setPopupText(`${level ?? stat.level}  놀 이 마 당`);
+    setShowPopup(prev => ({ ...prev, game: true }));
+    setFooterText('사이띄개를 누르세요');
+    setGameState(GAME_STATE.READY);
+  };
 
   useEffect(() => {
     const ctx = canvasRef.current.getContext('2d');
@@ -127,48 +119,33 @@ const Home = () => {
     socket.on('game', game => {
       const { level, life, position, correct, incorrect, score } = game;
       if (gameState === GAME_STATE.PLAYING) {
-        setStat(
-          Object.assign(stat, {
-            level,
-            life,
-            correct,
-            incorrect,
-            score,
-            accuracy: correct + incorrect !== 0 ? Math.round((correct / (correct + incorrect)) * 100) : 0,
-          })
-        );
+        setStat({
+          level,
+          life,
+          correct,
+          incorrect,
+          score,
+          accuracy: correct + incorrect !== 0 ? Math.round((correct / (correct + incorrect)) * 100) : 0,
+        });
         setGame(position.filter(p => p.y > 1));
       } else if (gameState === GAME_STATE.GAME_OVER)
-        setStat(
-          Object.assign(stat, {
-            level,
-            life,
-            correct,
-            incorrect,
-            score,
-            accuracy: correct + incorrect !== 0 ? Math.round((correct / (correct + incorrect)) * 100) : 0,
-          })
-        );
+        setStat({
+          level,
+          life,
+          correct,
+          incorrect,
+          score,
+          accuracy: correct + incorrect !== 0 ? Math.round((correct / (correct + incorrect)) * 100) : 0,
+        });
     });
     return () => socket.off();
   });
-
-  const resetGame = () => {
-    setGame([]);
-    setStat({ level: 1, correct: 0, incorrect: 0, accuracy: 0, score: 10, life: 18 });
-  };
-
-  const initGame = () => {
-    setShowPopup(prev => ({ ...prev, game: true }));
-    setFooterText('사이띄개를 누르세요');
-    setGameState(GAME_STATE.READY);
-  };
 
   const handleLevelSelect = level => {
     setStat(prev => ({ ...prev, level }));
     socket.emit('startLevel', level);
     setShowPopup(prev => ({ ...prev, levelSelect: false }));
-    initGame();
+    initGame(level);
   };
 
   const populateLife = () => {
@@ -208,7 +185,11 @@ const Home = () => {
               socket.emit('state', 'cReady');
               break;
             case GAME_STATE.PLAYING:
-              setInput(e.target.value);
+              {
+                const trimmed = e.target.value.trim();
+                if (trimmed) socket.emit('game', trimmed);
+                e.target.value = '';
+              }
               break;
           }
           break;
@@ -250,7 +231,7 @@ const Home = () => {
                     <Image className="logo" src="/title.png" alt="logo" width={36} height={30} />
                     <span className="titleText">점수 보기</span>
                   </div>
-                  <button className="button quit" onClick={close}>
+                  <button type="button" className="button quit" aria-label="닫기" onClick={close}>
                     X
                   </button>
                 </div>
@@ -302,16 +283,16 @@ const Home = () => {
                     <Image className="logo" src="/title.png" alt="logo" width={36} height={30} />
                     <span className="titleText">점수 보기</span>
                   </div>
-                  <button className="button quit" onClick={close}>
+                  <button type="button" className="button quit" aria-label="닫기" onClick={close}>
                     X
                   </button>
                 </div>
                 <div className="content">
                   <div className="word-bg-picker">
                     단어 배경색:
-                    <button className={`word-bg aaa${bgWord === '#aaa' ? ' active' : ''}`} onClick={() => handleColourChange('#aaa')}></button>
-                    <button className={`word-bg ccc${bgWord === '#ccc' ? ' active' : ''}`} onClick={() => handleColourChange('#ccc')}></button>
-                    <button className={`word-bg fff${bgWord === '#fff' ? ' active' : ''}`} onClick={() => handleColourChange('#fff')}></button>
+                    <button type="button" aria-label="단어 배경 회색" className={`word-bg aaa${bgWord === '#aaa' ? ' active' : ''}`} onClick={() => handleColourChange('#aaa')}></button>
+                    <button type="button" aria-label="단어 배경 밝은 회색" className={`word-bg ccc${bgWord === '#ccc' ? ' active' : ''}`} onClick={() => handleColourChange('#ccc')}></button>
+                    <button type="button" aria-label="단어 배경 흰색" className={`word-bg fff${bgWord === '#fff' ? ' active' : ''}`} onClick={() => handleColourChange('#fff')}></button>
                   </div>
                   <hr />
                 </div>
@@ -320,7 +301,9 @@ const Home = () => {
           </Popup>
           <ButtonLogin />
           <button
+            type="button"
             className="button quit"
+            aria-label="게임 종료"
             onClick={e => {
               e.preventDefault();
               socket.emit('state', 'gameover');
@@ -348,7 +331,7 @@ const Home = () => {
       <canvas className="game" ref={canvasRef} />
       <div className="footer">
         <div id="footer-input" data-input="">
-          <input className="p-4" id="gameInput" type="text" spellCheck="false" autoFocus onKeyDown={inputHandler} ref={inputRef} />
+          <input className="p-4" id="gameInput" type="text" aria-label="게임 단어 입력" spellCheck="false" autoFocus onKeyDown={inputHandler} ref={inputRef} />
         </div>
         <div className="footer-status">
           <div className="keyboard">한글-2</div>
@@ -380,7 +363,7 @@ const Home = () => {
                 <legend className="level-select-header-legend">&nbsp;마당</legend>
                 <div className="level-select-list">
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(level => (
-                    <button key={level} className="level-select-item" onClick={() => handleLevelSelect(level)}>
+                    <button key={level} type="button" className="level-select-item" onClick={() => handleLevelSelect(level)}>
                       {level} 놀이마당
                     </button>
                   ))}
@@ -395,8 +378,7 @@ const Home = () => {
       </Popup>
       {showPopup.game && (
         <div className="popup-container" onClick={() => inputRef.current.focus()}>
-          {!hideTutorial ||
-            (status !== 'authenticated' && (
+          {!hideTutorial && status !== 'authenticated' && (
               <div className="tutorial">
                 로그인을 하시면
                 <br />
@@ -406,6 +388,7 @@ const Home = () => {
                 <br />
                 탈퇴시 이메일과 기록은 삭제됩니다.
                 <button
+                  type="button"
                   className="button"
                   onClick={() => {
                     localStorage.setItem('hideTutorial', true);
@@ -415,7 +398,7 @@ const Home = () => {
                   다시 보지 않기
                 </button>
               </div>
-            ))}
+            )}
           <div id="gameover" className={popupColour}>
             {popupText}
           </div>

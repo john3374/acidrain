@@ -1,5 +1,4 @@
 import NextAuthProvider from '@/components/NextAuthProvider';
-import '@/db';
 import './globals.css';
 
 export const metadata = {

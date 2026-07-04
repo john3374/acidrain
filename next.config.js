@@ -1,6 +1,14 @@
+const websocketUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL || process.env.NEXT_PUBLIC_SOCKET_URL || process.env.WEBSOCKET_URL;
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  headers: () => [{ source: '/api/score', headers: [{ key: 'Cache-Control', value: 'no-store' }] }],
+  ...(websocketUrl ? { env: { NEXT_PUBLIC_WEBSOCKET_URL: websocketUrl } } : {}),
+  headers: () => [
+    {
+      source: '/api/score/:path*',
+      headers: [{ key: 'Cache-Control', value: 'no-store' }],
+    },
+  ],
   images: {
     remotePatterns: [
       {
