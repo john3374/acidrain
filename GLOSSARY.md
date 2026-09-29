@@ -53,5 +53,5 @@ A ranked list of Scores within one Period.
 _Avoid_: Scoreboard, ranking, high-score table
 
 **Period**:
-The time window a Leaderboard covers: today, the last 7 days, the last 30 days, or all time.
-_Avoid_: Range, window, tab
+The time window a Leaderboard covers, always ending now: the last 24 hours, the last 7 days, the last 30 days, or all time. A Score falls in a Period if its Game finished inside it.
+_Avoid_: Range, tab, today, this week
