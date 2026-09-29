@@ -4,6 +4,14 @@ A 90s-style typing game: words fall from the top of the screen and the player ty
 
 ## Language
 
+**Player**:
+Someone who plays while signed in with an account, and so has a nickname. A Player's Scores carry their nickname.
+_Avoid_: User, account, member
+
+**Guest**:
+Someone who plays without signing in. A Guest's Scores carry no name and are shown as 익명.
+_Avoid_: Anonymous user, visitor, logged-out player
+
 **Game**:
 One play-through, from starting at a chosen Level until it is finished. A Game is finished when the player runs out of pH or quits; a Game left by closing the page or losing the connection is abandoned, not finished.
 _Avoid_: Round, session, match
