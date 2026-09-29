@@ -1,23 +1,24 @@
 import { useEffect, useState } from 'react';
-const start = Date.now();
-const Stopwatch = () => {
-  const [time, setTime] = useState(0);
-  const formatTimer = num => {
-    const min = Math.floor(num / 60);
-    const sec = num % 60;
-    return `${min < 10 ? '0' + min : min}:${sec < 10 ? '0' + sec : sec}`;
-  };
+
+const formatTimer = num => {
+  const min = Math.floor(num / 60);
+  const sec = num % 60;
+  return `${min < 10 ? '0' + min : min}:${sec < 10 ? '0' + sec : sec}`;
+};
+
+// Shows how long the current Game has lasted: 00:00 before the first Game, counting while
+// `start` is set and `end` is not, and holding its value once `end` is set.
+const Stopwatch = ({ start = null, end = null }) => {
+  const [now, setNow] = useState(0);
+  const running = start != null && end == null;
 
   useEffect(() => {
-    let secOffset = 1000;
-    let timeId = setTimeout(() => {
-      const now = Date.now();
-      setTime(Math.round((now - start) / 1000));
-      secOffset = 1000 - (now % 1000);
-    }, secOffset);
-    return () => clearTimeout(timeId);
-  });
+    if (!running) return;
+    const timeId = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timeId);
+  }, [running, start]);
 
+  const time = start == null ? 0 : Math.max(0, Math.floor(((end ?? now) - start) / 1000));
   return <div>{formatTimer(time)}</div>;
 };
 
