@@ -48,6 +48,10 @@ _Avoid_: Precision, hit rate
 The final points from one finished Game. An abandoned Game has no Score.
 _Avoid_: Record, result, 점수 entry
 
+**Claim**:
+A Guest who signs in right after a Game taking that Game's Score as their own, so it counts as a Player's Score.
+_Avoid_: Adopt, transfer, link
+
 **Leaderboard**:
 A ranked list of Players within one Period, each placed by their Personal best in that Period. Guests are not ranked.
 _Avoid_: Scoreboard, ranking, high-score table
