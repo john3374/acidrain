@@ -25,5 +25,6 @@ const getSocketUrl = () => {
   return 'https://acidrain.akfn.net';
 };
 
-export const socket = io(getSocketUrl());
+// The session cookie must travel with the handshake so the server can tell a Player from a Guest.
+export const socket = io(getSocketUrl(), { withCredentials: true });
 export const clientId = Math.random().toString(36).slice(2);

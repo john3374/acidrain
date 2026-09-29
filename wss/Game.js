@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import mongoose from 'mongoose';
-import { Game as GameDB, Score, Word } from '../schema/index.js';
+import { Game as GameDB, Player, Score, Word } from '../schema/index.js';
 
 const { ObjectId } = mongoose.Types;
 
@@ -62,7 +62,7 @@ class Game {
     GameDB.updateOne(
       { gameId: client.gameId },
       { $set: { correct: this.correct, incorrect: this.incorrect, life: this.life, seed: this.#random.getSeed(), score: this.score } },
-      { upsert: true }
+      { upsert: true },
     ).catch(err => {
       console.log('failed to upsert game');
       console.log(err);
@@ -150,7 +150,7 @@ class Game {
           this.#checkOverlap(
             word,
             isOverflow ? this.width - word.length * this.charWidth : pos * this.width,
-            isOverflow ? this.width : pos * this.width + word.length * this.charWidth
+            isOverflow ? this.width : pos * this.width + word.length * this.charWidth,
           );
         }
         this.#dropOffset += Math.sqrt(this.level) / Math.min(this.level * 10, 90);
@@ -211,11 +211,28 @@ class Game {
     GameDB.updateOne(
       { gameId: this.#client.gameId },
       { $set: { correct: this.correct, incorrect: this.incorrect, life: this.life, score: this.score } },
-      { upsert: true }
+      { upsert: true },
     ).catch(err => console.log('failed to update game', err));
+
+    // Capture the Score now: the caller resets the Game right after this returns.
     const score = new Score({ score: this.score });
-    if (this.#client.playerId && ObjectId.isValid(String(this.#client.playerId))) score.player = new ObjectId(String(this.#client.playerId));
-    score.save().catch(err => console.log(err));
+    const playerId = this.#client.playerId;
+    this.#savePlayerScore(score, playerId).catch(err => console.log('failed to save score', err));
+  }
+
+  // Attach the Player only if they still exist; otherwise the Score is saved as a Guest Score.
+  async #savePlayerScore(score, playerId) {
+    if (playerId && ObjectId.isValid(String(playerId))) {
+      const _id = new ObjectId(String(playerId));
+      let exists = false;
+      try {
+        exists = Boolean(await Player.exists({ _id }));
+      } catch (err) {
+        console.log('failed to check player; saving score as guest', err);
+      }
+      if (exists) score.player = _id;
+    }
+    await score.save();
   }
 
   resetGame() {

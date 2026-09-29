@@ -2,13 +2,13 @@ import dotenv from 'dotenv';
 dotenv.config();
 import { connectDB } from '../db.js';
 import Game from './Game.js';
+import { resolvePlayerId } from './playerIdentity.js';
 import http from 'http';
 import { Server } from 'socket.io';
 
 const MIN_LEVEL = 1;
 const MAX_LEVEL = 10;
 const CLIENT_ID_PATTERN = /^[a-z0-9_-]{6,80}$/i;
-const OBJECT_ID_PATTERN = /^[0-9a-fA-F]{24}$/;
 const ALLOWED_STATES = new Set(['cReady', 'play', 'gameover']);
 
 const clampLevel = value => {
@@ -35,8 +35,6 @@ const parseInitPayload = payload => {
   return { clientId, width, charWidth, level };
 };
 
-const isValidObjectId = value => typeof value === 'string' && OBJECT_ID_PATTERN.test(value);
-
 const getAllowedOrigins = () => {
   const configured = process.env.WEBSOCKET_CORS_ORIGINS || process.env.ALLOWED_ORIGINS || process.env.NEXTAUTH_URL || '';
   const origins = configured
@@ -59,22 +57,32 @@ if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
 
 const isAllowedOrigin = origin => !origin || allowedOrigins.includes(origin);
 
+if (!process.env.NEXTAUTH_SECRET) {
+  console.warn('NEXTAUTH_SECRET is not set: every socket will play as a Guest');
+}
+
 const server = http.createServer();
 const io = new Server(server, {
-  cors: { origin: allowedOrigins, methods: ['GET', 'POST'] },
+  cors: { origin: allowedOrigins, methods: ['GET', 'POST'], credentials: true },
   allowRequest: (req, callback) => callback(null, isAllowedOrigin(req.headers.origin)),
 });
 const games = {};
 
+// Identity comes only from the NextAuth session cookie (ADR 0002). A socket without a valid one is a Guest.
+io.use(async (socket, next) => {
+  try {
+    const playerId = await resolvePlayerId(socket.handshake.headers.cookie, process.env.NEXTAUTH_SECRET);
+    if (playerId) socket.playerId = playerId;
+  } catch (err) {
+    console.warn('failed to resolve player identity; treating socket as Guest', err);
+  }
+  next();
+});
+
 io.on('connection', client => {
-  console.log(client.id, client.handshake.address);
-  client.on('login', id => {
-    if (!isValidObjectId(id)) {
-      delete client.playerId;
-      return;
-    }
-    client.playerId = id;
-  });
+  console.log(client.id, client.handshake.address, client.playerId ? 'player' : 'guest');
+  // Old tabs still send `login` with a player id. Identity is resolved from the session cookie, so the payload is ignored.
+  client.on('login', () => {});
   client.on('init', payload => {
     const parsed = parseInitPayload(payload);
     if (!parsed) {

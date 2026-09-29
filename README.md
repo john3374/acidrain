@@ -41,7 +41,7 @@ pnpm dev      # terminal 2 — Next.js :4001
 
 **Prod:** `pnpm build && pnpm start`
 
-**Env:** `.env` — MongoDB, NEXTAUTH_SECRET, NEXTAUTH_URL
+**Env:** `.env` — MongoDB, NEXTAUTH_SECRET (needed by both the app and `pnpm wss`), NEXTAUTH_URL
 
 ---
 
