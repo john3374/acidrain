@@ -24,6 +24,18 @@ _Avoid_: Life, health, HP
 The extra points a player gets for starting a Game at a Level above 1.
 _Avoid_: Start bonus, skip bonus
 
+**Hit**:
+A submitted word that matches a falling word. The screen shows it as 정타.
+_Avoid_: Correct, match
+
+**Typo**:
+A submitted word that matches no falling word. The screen shows it as 오타. A word that lands is not a Typo; it costs pH instead.
+_Avoid_: Miss, incorrect, error
+
+**Accuracy**:
+Hits as a share of all submitted words in a Game. The screen shows it as 정확도.
+_Avoid_: Precision, hit rate
+
 **Score**:
 The final points from one finished Game. An abandoned Game has no Score.
 _Avoid_: Record, result, 점수 entry
