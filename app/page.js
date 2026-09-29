@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import ButtonLogin from '@/components/ButtonLogin';
 import ScoreBoard from '@/components/ScoreBoard';
+import { NO_GAME, gameTimeAfter } from '@/components/gameTime';
 import { clientId, socket } from '@/components/socket';
 import Stopwatch from '@/components/Stopwatch';
 import 'reactjs-popup/dist/index.css';
@@ -25,6 +26,7 @@ const Home = () => {
   const [stat, setStat] = useState({ level: 1, correct: 0, incorrect: 0, accuracy: 0, score: 10, life: 18 });
   const [game, setGame] = useState([]);
   const [gameState, setGameState] = useState(0);
+  const [gameTime, setGameTime] = useState(NO_GAME);
   const [hideTutorial, setHideTutorial] = useState(() =>
     typeof window === 'undefined' ? false : localStorage.getItem('hideTutorial') === 'true'
   );
@@ -84,6 +86,8 @@ const Home = () => {
       setFooterText('연결 없음');
     });
     socket.on('state', cmd => {
+      const now = Date.now();
+      setGameTime(prev => gameTimeAfter(prev, cmd, now));
       switch (cmd) {
         case 'restart':
           setGameState(GAME_STATE.BEFORE_START);
@@ -337,7 +341,7 @@ const Home = () => {
           <div className="keyboard">한글-2</div>
           <div className="status">{footerText}</div>
           <div className="elapsed">
-            <Stopwatch />
+            <Stopwatch start={gameTime.start} end={gameTime.end} />
           </div>
         </div>
       </div>
