@@ -49,8 +49,12 @@ The final points from one finished Game. An abandoned Game has no Score.
 _Avoid_: Record, result, 점수 entry
 
 **Leaderboard**:
-A ranked list of Scores within one Period.
+A ranked list of Players within one Period, each placed by their Personal best in that Period. Guests are not ranked.
 _Avoid_: Scoreboard, ranking, high-score table
+
+**Personal best**:
+A Player's highest Score within a Period.
+_Avoid_: High score, PB, record
 
 **Period**:
 The time window a Leaderboard covers, always ending now: the last 24 hours, the last 7 days, the last 30 days, or all time. A Score falls in a Period if its Game finished inside it.
