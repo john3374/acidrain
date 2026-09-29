@@ -63,3 +63,11 @@ _Avoid_: High score, PB, record
 **Period**:
 The time window a Leaderboard covers, always ending now: the last 24 hours, the last 7 days, the last 30 days, or all time. A Score falls in a Period if its Game finished inside it.
 _Avoid_: Range, tab, today, this week
+
+**Achievement**:
+A goal a Player reaches once, through what happens in a finished Game, and never loses. A Guest sees what their Game would have earned, but keeps it only by Claiming that Game's Score. The screen shows it as 업적.
+_Avoid_: Badge, trophy, medal, 도전 과제
+
+**Game played**:
+A finished Game with at least one Hit. Only these count toward Achievements for the number of Games.
+_Avoid_: Play, run, session
