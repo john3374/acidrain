@@ -20,7 +20,7 @@ const Home = () => {
   const canvasRef = useRef(null);
   const [showPopup, setShowPopup] = useState({ game: false, levelSelect: false, score: false, settings: false, profile: false });
   const [popupText, setPopupText] = useState('1  놀 이 마 당');
-  const [footerText, setFooterText] = useState('연결 없음');
+  const [footerText, setFooterText] = useState('연결을 기다리는 중입니다');
   const [popupColour, setPopupColour] = useState('');
   const [stat, setStat] = useState({ level: 1, correct: 0, incorrect: 0, accuracy: 0, score: 10, life: 18 });
   const [game, setGame] = useState([]);
