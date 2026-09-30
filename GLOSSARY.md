@@ -71,3 +71,11 @@ _Avoid_: Badge, trophy, medal, 도전 과제
 **Game played**:
 A finished Game with at least one Hit. Only these count toward Achievements for the number of Games.
 _Avoid_: Play, run, session
+
+**Replay**:
+A Game started within 5 minutes after the same player's previous Game finished.
+_Avoid_: Retry, rematch, restart
+
+**Return visit**:
+A Game started at least 12 hours after the same player's previous Game.
+_Avoid_: Retention, comeback, revisit
