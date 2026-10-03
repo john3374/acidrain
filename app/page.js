@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 
 import ButtonLogin from '@/components/ButtonLogin';
+import { achievementById } from '@/game/achievements';
 import ScoreBoard from '@/components/ScoreBoard';
 import { NO_GAME, gameTimeAfter } from '@/components/gameTime';
 import { clientId, socket } from '@/components/socket';
@@ -19,6 +20,12 @@ const GAME_STATE = { BEFORE_START: 0, PLAYING: 1, GAME_OVER: 2, READY: 3, WAITIN
 const Home = () => {
   const inputRef = useRef(null);
   const canvasRef = useRef(null);
+  const gameOverTimer = useRef(null);
+  // True between `gameover` and leaving the game-over screen. A ref, because `result` can arrive in the same
+  // batch as `gameover`, before React has committed the new gameState.
+  const awaitingResult = useRef(false);
+  // Game overs seen on this connection; a `result` for an earlier Game (its `sequence` is lower) is stale.
+  const gamesFinished = useRef(0);
   const [showPopup, setShowPopup] = useState({ game: false, levelSelect: false, score: false, settings: false, profile: false });
   const [popupText, setPopupText] = useState('1  놀 이 마 당');
   const [footerText, setFooterText] = useState('연결을 기다리는 중입니다');
@@ -27,6 +34,8 @@ const Home = () => {
   const [game, setGame] = useState([]);
   const [gameState, setGameState] = useState(0);
   const [gameTime, setGameTime] = useState(NO_GAME);
+  // The finished Game's Achievements from the `result` event: { achievements: [id], guest }.
+  const [result, setResult] = useState(null);
   const [hideTutorial, setHideTutorial] = useState(() =>
     typeof window === 'undefined' ? false : localStorage.getItem('hideTutorial') === 'true'
   );
@@ -38,6 +47,17 @@ const Home = () => {
   const resetGame = () => {
     setGame([]);
     setStat({ level: 1, correct: 0, incorrect: 0, accuracy: 0, score: 10, life: 18 });
+  };
+
+  // Back to Level select after a Game over, whether the 4-second timer or a key got there first.
+  const dismissGameOver = () => {
+    clearTimeout(gameOverTimer.current);
+    gameOverTimer.current = null;
+    awaitingResult.current = false;
+    resetGame();
+    setResult(null);
+    setShowPopup(prev => ({ ...prev, levelSelect: true, game: false }));
+    setGameState(GAME_STATE.BEFORE_START);
   };
 
   const initGame = level => {
@@ -85,6 +105,9 @@ const Home = () => {
     socket.on('disconnect', () => {
       setFooterText('연결 없음');
     });
+    socket.on('connect', () => {
+      gamesFinished.current = 0;
+    });
     socket.on('state', cmd => {
       const now = Date.now();
       setGameTime(prev => gameTimeAfter(prev, cmd, now));
@@ -112,12 +135,23 @@ const Home = () => {
           setShowPopup(prev => ({ ...prev, game: true }));
           setFooterText('');
           setGameState(GAME_STATE.GAME_OVER);
-          setTimeout(() => {
-            resetGame();
-            setShowPopup(prev => ({ ...prev, levelSelect: true, game: false }));
-            setGameState(GAME_STATE.BEFORE_START);
-          }, 4000);
+          setResult(null);
+          awaitingResult.current = true;
+          gamesFinished.current += 1;
+          clearTimeout(gameOverTimer.current);
+          gameOverTimer.current = setTimeout(dismissGameOver, 4000);
           break;
+      }
+    });
+    // Arrives just after `gameover`, once the Score is saved. With Achievements to read, the screen waits for a key.
+    socket.on('result', payload => {
+      if (!awaitingResult.current || !Array.isArray(payload?.achievements)) return;
+      if (typeof payload.sequence === 'number' && payload.sequence < gamesFinished.current) return;
+      setResult(payload);
+      if (payload.achievements.length > 0) {
+        clearTimeout(gameOverTimer.current);
+        gameOverTimer.current = null;
+        setFooterText('사이띄개를 누르세요');
       }
     });
     socket.on('game', game => {
@@ -177,12 +211,14 @@ const Home = () => {
       if (code === 0 || code === 229) code = e.target.value.charAt(e.target.selectionStart - 1).charCodeAt();
       switch (code) {
         case 27: // escape
-          socket.emit('state', 'gameover');
+          if (gameState === GAME_STATE.GAME_OVER) dismissGameOver();
+          else socket.emit('state', 'gameover');
           break;
         case 13: // enter
         case 32: // space
           switch (gameState) {
             case GAME_STATE.GAME_OVER:
+              dismissGameOver();
               break;
             case GAME_STATE.READY:
               if (session?.user.id) socket.emit('login', session.user.id);
@@ -406,6 +442,16 @@ const Home = () => {
           <div id="gameover" className={popupColour}>
             {popupText}
           </div>
+          {result?.achievements.length > 0 && (
+            <div className="achievements-earned" aria-label="업적">
+              <div className="achievements-earned-title">{result.guest ? '로그인했다면 받았을 업적' : '새 업적'}</div>
+              {result.achievements.map(id => (
+                <span key={id} className="achievement-badge">
+                  {achievementById(id)?.name ?? id}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </main>

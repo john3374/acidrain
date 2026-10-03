@@ -149,11 +149,13 @@ io.on('connection', client => {
     }
   });
   client.on('error', err => {
+    games[client.gameId]?.abandon();
     delete games[client.gameId];
     console.log(err);
   });
   client.on('disconnect', reason => {
     console.log('reason', reason);
+    games[client.gameId]?.abandon();
     delete games[client.gameId];
     console.log(Object.keys(games));
     console.log(io.engine.clientsCount);

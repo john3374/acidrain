@@ -5,6 +5,8 @@ import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { useRef, useState } from 'react';
 
+import Achievements from '@/components/Achievements';
+
 const Popup = dynamic(() => import('reactjs-popup'), { ssr: false });
 
 const ButtonLogin = () => {
@@ -104,6 +106,9 @@ const ButtonLogin = () => {
                   </button>
                 </div>
               </form>
+              <hr />
+              <div className="achievements-title">업적</div>
+              <Achievements />
             </div>
           </div>
         )}

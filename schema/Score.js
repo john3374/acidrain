@@ -9,6 +9,11 @@ const scoreSchema = new Schema(
     started: { type: Date },
     // Guest Scores only: the socket's per-page-load clientId, so Replays can be counted without a stored identifier.
     pageLoadId: { type: String },
+    // The Game's numbers, for Achievements. Missing on Scores saved before they were recorded.
+    startingLevel: { type: Number, min: 1, max: 10 },
+    levelReached: { type: Number, min: 1 },
+    hits: { type: Number, min: 0 },
+    typos: { type: Number, min: 0 },
   },
   {
     timestamps: { createdAt: 'created', updatedAt: 'updated' },

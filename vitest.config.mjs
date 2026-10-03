@@ -9,7 +9,7 @@ export default defineConfig({
     projects: [
       {
         extends: true,
-        test: { name: 'node', environment: 'node', include: ['**/*.test.js'], exclude: ['**/node_modules/**', '.next/**', 'components/**'] },
+        test: { name: 'node', environment: 'node', include: ['**/*.test.js'], exclude: ['**/node_modules/**', '.next/**', '.claude/**', 'components/**'] },
       },
       {
         extends: true,
