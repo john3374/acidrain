@@ -244,7 +244,7 @@ describe("the Game's numbers and Achievements at Game finish", () => {
     game.recordScore();
     await flush();
 
-    expect(resultOf(client)).toEqual([{ achievements: ['first-clear', 'level-5', 'flawless'], guest: true }]);
+    expect(resultOf(client)).toEqual([{ sequence: 1, achievements: ['first-clear', 'level-5', 'flawless'], guest: true }]);
     expect(awardAchievements).not.toHaveBeenCalled();
   });
 
@@ -265,7 +265,19 @@ describe("the Game's numbers and Achievements at Game finish", () => {
     expect(String(playerId)).toBe(PLAYER_ID);
     expect(String(score.player)).toBe(PLAYER_ID);
     expect(facts).toEqual({ startingLevel: 1, levelReached: 2, flawlessClear: false, hits: 4, typos: 0 });
-    expect(resultOf(client)).toEqual([{ achievements: ['first-clear', 'games-10'], guest: false }]);
+    expect(resultOf(client)).toEqual([{ sequence: 1, achievements: ['first-clear', 'games-10'], guest: false }]);
+  });
+
+  test('each finished Game on a connection gets the next sequence number', async () => {
+    const client = makeClient(undefined);
+    const game = new Game(client, 1);
+
+    game.recordScore();
+    game.resetGame();
+    game.recordScore();
+    await flush();
+
+    expect(resultOf(client).map(r => r.sequence)).toEqual([1, 2]);
   });
 
   test('a Player whose award fails gets no result, and the Score is still saved', async () => {

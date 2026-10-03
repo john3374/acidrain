@@ -41,6 +41,8 @@ class Game {
   #dropSpeed;
   #random;
   #scoreRecorded;
+  // How many Games this connection has finished; `result` carries it so the browser can match it to the right Game over.
+  #finished = 0;
   #started;
   #startingLevel;
   #flawlessClear;
@@ -227,6 +229,7 @@ class Game {
   recordScore() {
     if (this.#scoreRecorded) return;
     this.#scoreRecorded = true;
+    const sequence = ++this.#finished;
 
     GameDB.updateOne(
       { gameId: this.#client.gameId },
@@ -254,12 +257,12 @@ class Game {
     const playerId = client.playerId;
     const pageLoadId = client.gameId;
     this.#savePlayerScore(score, playerId, pageLoadId)
-      .then(() => this.#sendResult(client, score, game))
+      .then(() => this.#sendResult(client, score, game, sequence))
       .catch(err => console.log('failed to save score', err));
   }
 
   // The additive `result` event: the Achievements this Game earned. A Guest only sees what a Player would have kept.
-  async #sendResult(client, score, game) {
+  async #sendResult(client, score, game, sequence) {
     let achievements;
     let guest = true;
     if (score.player) {
@@ -273,7 +276,7 @@ class Game {
     } else {
       achievements = inGameAchievements(game);
     }
-    client.emit('result', { achievements, guest });
+    client.emit('result', { sequence, achievements, guest });
   }
 
   // Attach the Player only if they still exist; otherwise the Score is saved as a Guest Score with the page-load ID.
