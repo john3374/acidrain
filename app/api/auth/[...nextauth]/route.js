@@ -3,7 +3,7 @@ import DiscordProvider from 'next-auth/providers/discord';
 import GoogleProvider from 'next-auth/providers/google';
 import GithubProvider from 'next-auth/providers/github';
 import { connectDB } from '@/db';
-import { Player, Score } from '@/schema';
+import { Achievement, Player, Score } from '@/schema';
 import { validateNickname } from '@/lib/nickname';
 
 const handler = NextAuth({
@@ -56,6 +56,7 @@ const handler = NextAuth({
             await connectDB();
             const deleted = await Player.findOneAndDelete({ email: params.token.email });
             Score.deleteMany({ player: deleted._id }).catch(err => console.log('failed to delete scores', err));
+            Achievement.deleteMany({ player: deleted._id }).catch(err => console.log('failed to delete achievements', err));
             return {};
           } catch (e) {
             console.log(e);

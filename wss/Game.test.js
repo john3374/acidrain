@@ -8,7 +8,8 @@ vi.mock('../schema/index.js', () => {
       Object.assign(this, fields);
     }
     save() {
-      saved.push({ score: this.score, player: this.player, started: this.started, pageLoadId: this.pageLoadId });
+      const { score, player, started, pageLoadId, startingLevel, levelReached, hits, typos } = this;
+      saved.push({ score, player, started, pageLoadId, startingLevel, levelReached, hits, typos });
       return Promise.resolve(this);
     }
   }
@@ -20,6 +21,9 @@ vi.mock('../schema/index.js', () => {
   };
 });
 
+vi.mock('../lib/achievements.js', () => ({ awardAchievements: vi.fn(() => Promise.resolve([])) }));
+
+import { awardAchievements } from '../lib/achievements.js';
 import { Player } from '../schema/index.js';
 import Game from './Game.js';
 
@@ -60,7 +64,7 @@ describe('Game.recordScore', () => {
     game.resetGame();
     await flush();
 
-    expect(saved).toEqual([{ score: 500, player: undefined, started: undefined, pageLoadId: 'g1' }]);
+    expect(saved).toEqual([expect.objectContaining({ score: 500, player: undefined, started: undefined, pageLoadId: 'g1' })]);
   });
 
   test('saves a Guest Score without asking the database when the socket has no playerId', async () => {
@@ -71,7 +75,7 @@ describe('Game.recordScore', () => {
     await flush();
 
     expect(Player.exists).not.toHaveBeenCalled();
-    expect(saved).toEqual([{ score: 77, player: undefined, started: undefined, pageLoadId: 'g1' }]);
+    expect(saved).toEqual([expect.objectContaining({ score: 77, player: undefined, started: undefined, pageLoadId: 'g1' })]);
   });
 
   test('saves a Guest Score and logs when the Player lookup fails', async () => {
@@ -83,7 +87,7 @@ describe('Game.recordScore', () => {
     game.recordScore();
     await flush();
 
-    expect(saved).toEqual([{ score: 90, player: undefined, started: undefined, pageLoadId: 'g1' }]);
+    expect(saved).toEqual([expect.objectContaining({ score: 90, player: undefined, started: undefined, pageLoadId: 'g1' })]);
     expect(log).toHaveBeenCalled();
     log.mockRestore();
   });
@@ -194,5 +198,150 @@ describe('Game start time and page-load ID on the Score', () => {
     await flush();
 
     expect(saved[0].started).toBeUndefined();
+  });
+});
+
+describe("the Game's numbers and Achievements at Game finish", () => {
+  beforeEach(() => {
+    saved.length = 0;
+    Player.exists.mockReset();
+    awardAchievements.mockClear();
+  });
+
+  const resultOf = client => client.emit.mock.calls.filter(([event]) => event === 'result').map(([, payload]) => payload);
+
+  test('the Score records the starting Level, the Level reached, Hits and Typos', async () => {
+    const game = new Game(makeClient(undefined), 3);
+    game.start();
+    game.levelClear();
+    game.start();
+    game.correct = 7;
+    game.incorrect = 2;
+
+    game.recordScore();
+    game.resetGame();
+    await flush();
+
+    expect(saved[0]).toMatchObject({ startingLevel: 3, levelReached: 4, hits: 7, typos: 2 });
+  });
+
+  test('a Game that never started records its chosen Level as both starting Level and Level reached', async () => {
+    const game = new Game(makeClient(undefined), 6);
+
+    game.recordScore();
+    await flush();
+
+    expect(saved[0]).toMatchObject({ startingLevel: 6, levelReached: 6, hits: 0, typos: 0 });
+  });
+
+  test('a Guest gets the in-Game Achievements the Game met, marked as a Guest, and nothing is awarded', async () => {
+    const client = makeClient(undefined);
+    const game = new Game(client, 5);
+    game.start();
+    game.correct = 20;
+    game.levelClear();
+
+    game.recordScore();
+    await flush();
+
+    expect(resultOf(client)).toEqual([{ achievements: ['first-clear', 'level-5', 'flawless'], guest: true }]);
+    expect(awardAchievements).not.toHaveBeenCalled();
+  });
+
+  test('a Player is awarded from the saved Score and told what was new', async () => {
+    Player.exists.mockResolvedValue({ _id: PLAYER_ID });
+    awardAchievements.mockResolvedValueOnce(['first-clear', 'games-10']);
+    const client = makeClient(PLAYER_ID);
+    const game = new Game(client, 1);
+    game.start();
+    game.correct = 4;
+    game.levelClear();
+
+    game.recordScore();
+    await flush();
+
+    expect(awardAchievements).toHaveBeenCalledTimes(1);
+    const [{ playerId, score, game: facts }] = awardAchievements.mock.calls[0];
+    expect(String(playerId)).toBe(PLAYER_ID);
+    expect(String(score.player)).toBe(PLAYER_ID);
+    expect(facts).toEqual({ startingLevel: 1, levelReached: 2, flawlessClear: false, hits: 4, typos: 0 });
+    expect(resultOf(client)).toEqual([{ achievements: ['first-clear', 'games-10'], guest: false }]);
+  });
+
+  test('a Player whose award fails gets no result, and the Score is still saved', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    Player.exists.mockResolvedValue({ _id: PLAYER_ID });
+    awardAchievements.mockRejectedValueOnce(new Error('db down'));
+    const client = makeClient(PLAYER_ID);
+    const game = new Game(client, 1);
+
+    game.recordScore();
+    await flush();
+
+    expect(saved).toHaveLength(1);
+    expect(resultOf(client)).toEqual([]);
+    expect(log).toHaveBeenCalledWith('failed to award achievements', expect.any(Error));
+    log.mockRestore();
+  });
+
+  describe('무결점', () => {
+    const finish = game => {
+      const client = game.client;
+      game.recordScore();
+      return flush().then(() => resultOf(client)[0].achievements.includes('flawless'));
+    };
+    const start = level => {
+      const client = makeClient(undefined);
+      const game = new Game(client, level);
+      game.client = client;
+      game.start();
+      return game;
+    };
+
+    test('a Typo during the Level loses it', async () => {
+      const game = start(5);
+      game.incorrect++;
+      game.levelClear();
+      expect(await finish(game)).toBe(false);
+    });
+
+    test('a word landing during the Level loses it', async () => {
+      const game = start(5);
+      game.life--;
+      game.levelClear();
+      expect(await finish(game)).toBe(false);
+    });
+
+    test('a Level below 5 does not count', async () => {
+      const game = start(4);
+      game.levelClear();
+      expect(await finish(game)).toBe(false);
+    });
+
+    test('an earlier Typo does not spoil a later clean Level', async () => {
+      const game = start(4);
+      game.incorrect++;
+      game.levelClear();
+      game.start();
+      game.levelClear();
+      expect(await finish(game)).toBe(true);
+    });
+
+    test('once earned in a Game it stays earned, and the next Game starts clean', async () => {
+      const game = start(5);
+      game.levelClear();
+      game.start();
+      game.incorrect++;
+      game.levelClear();
+      expect(await finish(game)).toBe(true);
+
+      game.resetGame();
+      game.client.emit.mockClear();
+      game.level = 5;
+      game.start();
+      game.incorrect++;
+      game.levelClear();
+      expect(await finish(game)).toBe(false);
+    });
   });
 });

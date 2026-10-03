@@ -1,5 +1,7 @@
 import crypto from 'crypto';
 import mongoose from 'mongoose';
+import { inGameAchievements } from '../game/achievements.js';
+import { awardAchievements } from '../lib/achievements.js';
 import { Game as GameDB, Player, Score, Word } from '../schema/index.js';
 
 const { ObjectId } = mongoose.Types;
@@ -40,6 +42,10 @@ class Game {
   #random;
   #scoreRecorded;
   #started;
+  #startingLevel;
+  #flawlessClear;
+  #levelTypos;
+  #levelLife;
 
   constructor(client, level = 1) {
     this.#client = client;
@@ -59,6 +65,7 @@ class Game {
     this.#dropSpeed = 0;
     this.#random = new SeededRandom();
     this.#scoreRecorded = false;
+    this.#flawlessClear = false;
     this.bonus = 0;
     GameDB.updateOne(
       { gameId: client.gameId },
@@ -156,9 +163,7 @@ class Game {
         }
         this.#dropOffset += Math.sqrt(this.level) / Math.min(this.level * 10, 90);
       } else if (this.#position.length === 0) {
-        this.level++;
-        this.#client.emit('game', this.getState());
-        this.stop();
+        this.levelClear();
         return;
       }
       for (let i = 0; i < this.#position.length; i++) {
@@ -179,6 +184,15 @@ class Game {
     }, this.#dropSpeed);
   }
 
+  // Every word of the Level has been typed or has landed while pH remains: the next Level follows.
+  levelClear() {
+    // 무결점: a Level of 5 or higher cleared with no Typo and no word landing (a landing costs pH).
+    if (this.level >= 5 && this.incorrect === this.#levelTypos && this.life === this.#levelLife) this.#flawlessClear = true;
+    this.level++;
+    this.#client.emit('game', this.getState());
+    this.stop();
+  }
+
   getState() {
     return { level: this.level, life: this.life, position: this.#position, correct: this.correct, incorrect: this.incorrect, score: this.score };
   }
@@ -189,8 +203,11 @@ class Game {
     this.width = this.#client.width;
     this.charWidth = this.#client.charWidth;
     this.#dropSpeed = Math.max(184, 2200 - this.level * 200);
-    // The Game starts with its first Level; later Levels keep this time.
+    // The Game starts with its first Level; later Levels keep this time and the starting Level.
     this.#started ??= new Date();
+    this.#startingLevel ??= this.level;
+    this.#levelTypos = this.incorrect;
+    this.#levelLife = this.life;
     console.log('start', this.#client.gameId, 'speed:', this.#dropSpeed);
     this.#gameUpdate();
   }
@@ -217,11 +234,46 @@ class Game {
       { upsert: true },
     ).catch(err => console.log('failed to update game', err));
 
-    // Capture the Score now: the caller resets the Game right after this returns.
-    const score = new Score({ score: this.score, started: this.#started });
-    const playerId = this.#client.playerId;
-    const pageLoadId = this.#client.gameId;
-    this.#savePlayerScore(score, playerId, pageLoadId).catch(err => console.log('failed to save score', err));
+    // Capture the Game's numbers now: the caller resets the Game right after this returns.
+    const game = {
+      startingLevel: this.#startingLevel ?? this.level,
+      levelReached: this.level,
+      flawlessClear: this.#flawlessClear,
+      hits: this.correct,
+      typos: this.incorrect,
+    };
+    const score = new Score({
+      score: this.score,
+      started: this.#started,
+      startingLevel: game.startingLevel,
+      levelReached: game.levelReached,
+      hits: game.hits,
+      typos: game.typos,
+    });
+    const client = this.#client;
+    const playerId = client.playerId;
+    const pageLoadId = client.gameId;
+    this.#savePlayerScore(score, playerId, pageLoadId)
+      .then(() => this.#sendResult(client, score, game))
+      .catch(err => console.log('failed to save score', err));
+  }
+
+  // The additive `result` event: the Achievements this Game earned. A Guest only sees what a Player would have kept.
+  async #sendResult(client, score, game) {
+    let achievements;
+    let guest = true;
+    if (score.player) {
+      guest = false;
+      try {
+        achievements = await awardAchievements({ playerId: score.player, score, game });
+      } catch (err) {
+        console.log('failed to award achievements', err);
+        return;
+      }
+    } else {
+      achievements = inGameAchievements(game);
+    }
+    client.emit('result', { achievements, guest });
   }
 
   // Attach the Player only if they still exist; otherwise the Score is saved as a Guest Score with the page-load ID.
@@ -249,6 +301,8 @@ class Game {
     this.#dropOffset = 1;
     this.#scoreRecorded = false;
     this.#started = undefined;
+    this.#startingLevel = undefined;
+    this.#flawlessClear = false;
   }
 
   status() {

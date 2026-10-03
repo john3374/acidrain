@@ -86,6 +86,15 @@ input:focus{outline:2px solid #00008b;outline-offset:2px}
 .leaderboard td:first-child{flex:1.5}
 .tutorial{top:6rem;position:fixed;display:flex;font-family:ChosunGs,serif;font-size:1.5em;justify-content:center;text-align:center;background-color:#777;padding:1.25em;font-size:larger;font-weight:500;box-shadow:-.125rem -.125rem #eee;letter-spacing:.25rem;flex-direction:column;color:#ff0}
 .button.quit{font-family:san-serif}
+.achievements-earned{margin-top:1em;display:flex;flex-direction:column;align-items:center;gap:.5em;color:#fff;background:#00008b;padding:1em 1.25em;font-weight:500;box-shadow:-.125rem -.125rem #eee;letter-spacing:.125rem}
+.achievements-earned-title{color:#ff0}
+.achievement-badge{border:.1875rem double #ff0;padding:.25em .75em}
+.achievements-title{font-size:1.25em;margin-top:.5em}
+.achievements{list-style:none;margin:0 0 .5em;padding:0;display:flex;flex-direction:column;gap:.25em;width:100%}
+.achievement{display:flex;justify-content:space-between;gap:1em;border:.1875rem solid #555;border-style:outset;padding:.25em .5em}
+.achievement.locked{color:#555;border-style:inset}
+.achievement-detail{text-align:right}
+.achievements-status{margin:.5em}
 .word-bg-picker{display:flex;align-items:center;margin: 2rem;}
 .word-bg{width:1.5vw;height:1.5vw;margin-left:.625rem;border:2px solid #000}
 .word-bg.active{border:2px solid #ff0}
