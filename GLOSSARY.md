@@ -53,7 +53,7 @@ A Guest who signs in right after a Game taking that Game's Score as their own, s
 _Avoid_: Adopt, transfer, link
 
 **Leaderboard**:
-A ranked list of Players within one Period, each placed by their Personal best in that Period. Guests are not ranked.
+A ranked list within one Period: each Player placed once, by their Personal best in that Period, and each Guest Score as its own 익명 row.
 _Avoid_: Scoreboard, ranking, high-score table
 
 **Personal best**:
