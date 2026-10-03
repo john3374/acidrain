@@ -345,3 +345,47 @@ describe("the Game's numbers and Achievements at Game finish", () => {
     });
   });
 });
+
+describe('an abandoned Game', () => {
+  beforeEach(() => {
+    saved.length = 0;
+    Player.exists.mockReset();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test('stops dropping words and never saves a Score or sends a result', async () => {
+    const client = makeClient(undefined);
+    const game = new Game(client, 1);
+    await vi.advanceTimersByTimeAsync(0); // words loaded
+    game.start();
+    game.life = 0;
+    await vi.advanceTimersByTimeAsync(5_000);
+    const emitsBefore = client.emit.mock.calls.length;
+
+    game.abandon();
+    await vi.advanceTimersByTimeAsync(60 * 60_000);
+    game.recordScore();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(client.emit.mock.calls.length).toBe(emitsBefore);
+    expect(client.emit).not.toHaveBeenCalledWith('state', 'gameover');
+    expect(saved).toEqual([]);
+  });
+
+  test('a running Game left alone does run out of pH and record, so the test above means something', async () => {
+    const client = makeClient(undefined);
+    const game = new Game(client, 1);
+    await vi.advanceTimersByTimeAsync(0);
+    game.start();
+    game.life = 0;
+
+    await vi.advanceTimersByTimeAsync(60 * 60_000);
+
+    expect(client.emit).toHaveBeenCalledWith('state', 'gameover');
+    expect(saved).toHaveLength(1);
+  });
+});

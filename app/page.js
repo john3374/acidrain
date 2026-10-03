@@ -21,6 +21,9 @@ const Home = () => {
   const inputRef = useRef(null);
   const canvasRef = useRef(null);
   const gameOverTimer = useRef(null);
+  // True between `gameover` and leaving the game-over screen. A ref, because `result` can arrive in the same
+  // batch as `gameover`, before React has committed the new gameState.
+  const awaitingResult = useRef(false);
   const [showPopup, setShowPopup] = useState({ game: false, levelSelect: false, score: false, settings: false, profile: false });
   const [popupText, setPopupText] = useState('1  놀 이 마 당');
   const [footerText, setFooterText] = useState('연결을 기다리는 중입니다');
@@ -48,6 +51,7 @@ const Home = () => {
   const dismissGameOver = () => {
     clearTimeout(gameOverTimer.current);
     gameOverTimer.current = null;
+    awaitingResult.current = false;
     resetGame();
     setResult(null);
     setShowPopup(prev => ({ ...prev, levelSelect: true, game: false }));
@@ -127,6 +131,7 @@ const Home = () => {
           setFooterText('');
           setGameState(GAME_STATE.GAME_OVER);
           setResult(null);
+          awaitingResult.current = true;
           clearTimeout(gameOverTimer.current);
           gameOverTimer.current = setTimeout(dismissGameOver, 4000);
           break;
@@ -134,7 +139,7 @@ const Home = () => {
     });
     // Arrives just after `gameover`, once the Score is saved. With Achievements to read, the screen waits for a key.
     socket.on('result', payload => {
-      if (gameState !== GAME_STATE.GAME_OVER || !Array.isArray(payload?.achievements)) return;
+      if (!awaitingResult.current || !Array.isArray(payload?.achievements)) return;
       setResult(payload);
       if (payload.achievements.length > 0) {
         clearTimeout(gameOverTimer.current);

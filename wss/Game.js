@@ -292,6 +292,15 @@ class Game {
     await score.save();
   }
 
+  // The page closed or the connection dropped mid-Game: the Game is abandoned, not finished.
+  // Stop the timer so pH can't run out later, and make sure nothing is saved or awarded.
+  abandon() {
+    clearTimeout(this.#loopId);
+    this.#loopId = null;
+    this.#position = [];
+    this.#scoreRecorded = true;
+  }
+
   resetGame() {
     this.score = 10;
     this.correct = 0;
