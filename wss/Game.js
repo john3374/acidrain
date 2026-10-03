@@ -39,6 +39,7 @@ class Game {
   #dropSpeed;
   #random;
   #scoreRecorded;
+  #started;
 
   constructor(client, level = 1) {
     this.#client = client;
@@ -188,6 +189,8 @@ class Game {
     this.width = this.#client.width;
     this.charWidth = this.#client.charWidth;
     this.#dropSpeed = Math.max(184, 2200 - this.level * 200);
+    // The Game starts with its first Level; later Levels keep this time.
+    this.#started ??= new Date();
     console.log('start', this.#client.gameId, 'speed:', this.#dropSpeed);
     this.#gameUpdate();
   }
@@ -215,13 +218,14 @@ class Game {
     ).catch(err => console.log('failed to update game', err));
 
     // Capture the Score now: the caller resets the Game right after this returns.
-    const score = new Score({ score: this.score });
+    const score = new Score({ score: this.score, started: this.#started });
     const playerId = this.#client.playerId;
-    this.#savePlayerScore(score, playerId).catch(err => console.log('failed to save score', err));
+    const pageLoadId = this.#client.gameId;
+    this.#savePlayerScore(score, playerId, pageLoadId).catch(err => console.log('failed to save score', err));
   }
 
-  // Attach the Player only if they still exist; otherwise the Score is saved as a Guest Score.
-  async #savePlayerScore(score, playerId) {
+  // Attach the Player only if they still exist; otherwise the Score is saved as a Guest Score with the page-load ID.
+  async #savePlayerScore(score, playerId, pageLoadId) {
     if (playerId && ObjectId.isValid(String(playerId))) {
       const _id = new ObjectId(String(playerId));
       let exists = false;
@@ -232,6 +236,7 @@ class Game {
       }
       if (exists) score.player = _id;
     }
+    if (!score.player) score.pageLoadId = pageLoadId;
     await score.save();
   }
 
@@ -243,6 +248,7 @@ class Game {
     this.level = 1;
     this.#dropOffset = 1;
     this.#scoreRecorded = false;
+    this.#started = undefined;
   }
 
   status() {
