@@ -22,7 +22,7 @@ main{color:#030007;background:#aaa;-webkit-touch-callout:none;-webkit-user-selec
 .level-select-header{border: 1px solid #808080;}
 .level-select-header-legend{color:#fff;letter-spacing:1em;font-family:sans-serif;font-weight:400;text-align:center;}
 .level-select-list{display:flex;flex-direction:column;gap:.125rem;padding: .5rem 4rem;}
-.level-select-item{background:#c0c0c0;border:1px outset #c0c0c0;padding:.5rem 1rem;text-align:center;font-family:ChosunGs,serif;font-weight:600;cursor:pointer;color:#000;font-size:1em;box-shadow:1px 1px 0 #fff,-1px -1px 0 #808080}
+.level-select-item{background:#c0c0c0;border:1px outset #c0c0c0;padding:.5rem 1rem;text-align:center;font-family:ChosunGs,serif;font-weight:600;cursor:pointer;color:#000;font-size:1em;white-space:nowrap;box-shadow:1px 1px 0 #fff,-1px -1px 0 #808080}
 .level-select-item:hover{background:#00008b;color:#fff}
 .level-select-item:active{border:1px inset #c0c0c0;box-shadow:inset 1px 1px #808080,inset -1px -1px #fff}
 .level-select-footer{border:2px inset #c0c0c0;box-shadow:inset 1px 1px #808080,inset -1px -1px #fff;color:#fff;font-weight:lighter;padding-left:.5rem;}
@@ -54,6 +54,8 @@ input[type=text]{width:20vw}
 @media only screen and (max-width:600px){
 input[type=text]{width:40vw}
 .popup-content{width:90vw!important;overflow:scroll}
+.level-select-content{margin:1rem .5rem}
+.level-select-list{padding:.5rem 2rem}
 .leaderboard{font-size:.8em}
 .dashboard{font-size:.8em}
 .footer{font-size:.8em}
