@@ -30,6 +30,8 @@ const Home = () => {
   const pausedForRotation = useRef(false);
   // Game overs seen on this connection; a `result` for an earlier Game (its `sequence` is lower) is stale.
   const gamesFinished = useRef(0);
+  // Enter was pressed while a syllable was still being composed; submit once it's committed.
+  const submitAfterComposition = useRef(false);
   const [showPopup, setShowPopup] = useState({ game: false, levelSelect: false, score: false, settings: false, profile: false });
   const [popupText, setPopupText] = useState('1  놀 이 마 당');
   const [footerText, setFooterText] = useState('연결을 기다리는 중입니다');
@@ -222,39 +224,61 @@ const Home = () => {
     return bar;
   };
 
+  const submitWord = input => {
+    submitAfterComposition.current = false;
+    // Words don't count during a Pause; keep what was typed for after it.
+    if (gameState !== GAME_STATE.PLAYING || gameTime.paused) return;
+    const trimmed = input.value.trim();
+    if (trimmed) socket.emit('game', trimmed);
+    input.value = '';
+  };
+
   const inputHandler = e => {
-    if (e.nativeEvent.isComposing === false) {
-      let code = e.keyCode || e.which;
-      if (code === 0 || code === 229) code = e.target.value.charAt(e.target.selectionStart - 1).charCodeAt();
-      switch (code) {
-        case 27: // escape
-          if (gameState === GAME_STATE.GAME_OVER) dismissGameOver();
-          else socket.emit('state', 'gameover');
-          break;
-        case 13: // enter
-        case 32: // space
-          switch (gameState) {
-            case GAME_STATE.GAME_OVER:
-              dismissGameOver();
-              break;
-            case GAME_STATE.READY:
-              if (session?.user.id) socket.emit('login', session.user.id);
-              socket.emit('state', 'cReady');
-              break;
-            case GAME_STATE.PLAYING:
-              {
-                // Words don't count during a Pause; keep what was typed for after it.
-                if (gameTime.paused) break;
-                const trimmed = e.target.value.trim();
-                if (trimmed) socket.emit('game', trimmed);
-                e.target.value = '';
-              }
-              break;
-          }
-          break;
-      }
+    // Mid-composition the last syllable isn't in the value yet, and clearing the input now would leave it behind
+    // as the start of the next word. Space reaches handleWordInput once the syllable is committed; Enter waits
+    // for compositionend.
+    if (e.nativeEvent.isComposing) {
+      if (e.key === 'Enter' || e.code === 'Enter' || e.code === 'NumpadEnter') submitAfterComposition.current = true;
+      return;
+    }
+    switch (e.key) {
+      case 'Escape':
+        if (gameState === GAME_STATE.GAME_OVER) dismissGameOver();
+        else socket.emit('state', 'gameover');
+        break;
+      case 'Enter':
+      case ' ':
+        switch (gameState) {
+          case GAME_STATE.GAME_OVER:
+            dismissGameOver();
+            break;
+          case GAME_STATE.READY:
+            if (session?.user.id) socket.emit('login', session.user.id);
+            socket.emit('state', 'cReady');
+            break;
+          case GAME_STATE.PLAYING:
+            if (gameTime.paused) break;
+            e.preventDefault();
+            submitWord(e.target);
+            break;
+        }
+        break;
     }
   };
+
+  // A space that commits a syllable, or one from a phone keyboard that only sends keyCode 229, arrives as input.
+  const handleWordInput = e => {
+    const { data, isComposing } = e.nativeEvent;
+    if (!isComposing && data && /\s/.test(data)) submitWord(e.target);
+  };
+
+  const handleCompositionEnd = e => {
+    if (!submitAfterComposition.current) return;
+    const input = e.target;
+    // The committed syllable lands in the value just after compositionend.
+    setTimeout(() => submitWord(input));
+  };
+
   const handleColourChange = c => {
     localStorage.setItem('wordBgColour', c);
     setBgWord(c);
@@ -390,7 +414,7 @@ const Home = () => {
       <canvas className="game" ref={canvasRef} />
       <div className="footer">
         <div id="footer-input" data-input="">
-          <input className="p-4" id="gameInput" type="text" aria-label="게임 단어 입력" spellCheck="false" autoFocus onKeyDown={inputHandler} ref={inputRef} />
+          <input className="p-4" id="gameInput" type="text" aria-label="게임 단어 입력" spellCheck="false" autoFocus onKeyDown={inputHandler} onInput={handleWordInput} onCompositionEnd={handleCompositionEnd} ref={inputRef} />
         </div>
         <div className="footer-status">
           <div className="keyboard">한글-2</div>
