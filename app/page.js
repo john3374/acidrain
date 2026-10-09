@@ -6,11 +6,13 @@ import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 
 import ButtonLogin from '@/components/ButtonLogin';
+import RotateNotice from '@/components/RotateNotice';
 import { achievementById } from '@/game/achievements';
 import ScoreBoard from '@/components/ScoreBoard';
 import { NO_GAME, gameTimeAfter } from '@/components/gameTime';
 import { clientId, socket } from '@/components/socket';
 import Stopwatch from '@/components/Stopwatch';
+import useViewportHeight from '@/components/useViewportHeight';
 import 'reactjs-popup/dist/index.css';
 
 const Popup = dynamic(() => import('reactjs-popup'), { ssr: false });
@@ -42,6 +44,7 @@ const Home = () => {
   const [online, setOnline] = useState(false);
   const [bgWord, setBgWord] = useState(() => (typeof window === 'undefined' ? '#aaa' : localStorage.getItem('wordBgColour') || '#aaa'));
   const { data: session, status } = useSession();
+  const viewportHeight = useViewportHeight();
   const titleText = `랜덤타자연습 (놀이마당 ${stat.level})`;
 
   const resetGame = () => {
@@ -249,7 +252,7 @@ const Home = () => {
   // };
 
   return (
-    <main onClick={() => inputRef.current.focus()}>
+    <main style={viewportHeight ? { height: viewportHeight } : undefined} onClick={() => inputRef.current.focus()}>
       <div className="title">
         <div className="title-text">
           <Image className="logo" src="/title.png" alt="logo" width={36} height={30} />
@@ -454,6 +457,7 @@ const Home = () => {
           )}
         </div>
       )}
+      <RotateNotice />
     </main>
   );
 };
