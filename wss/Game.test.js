@@ -460,6 +460,48 @@ describe('a paused Game', () => {
     expect(game.resume()).toBe(false);
   });
 
+  test('resumes with the time left on the drop, so pausing over and over cannot stop words falling', async () => {
+    const { game } = await startedGame();
+    const fallen = () => game.getState().position.reduce((sum, { y }) => sum + y, 0);
+    await vi.advanceTimersByTimeAsync(1_000); // just past a drop (they fall at 2000ms, 4000ms, 6000ms…)
+    const before = fallen();
+
+    // Level 1 drops every 2000ms. Pausing for a moment every 1500ms would have restarted that wait every time.
+    for (let i = 0; i < 3; i++) {
+      await vi.advanceTimersByTimeAsync(1_500);
+      game.pause();
+      await vi.advanceTimersByTimeAsync(10_000);
+      game.resume();
+    }
+
+    expect(fallen()).toBeGreaterThan(before);
+  });
+
+  test('allows only so many Pauses per Level; after that the Game keeps running', async () => {
+    const { game } = await startedGame();
+    for (let i = 0; i < 3; i++) {
+      expect(game.pause()).toBe(true);
+      game.resume();
+    }
+
+    expect(game.pause()).toBe(false);
+    expect(game.status()).toBeTruthy();
+  });
+
+  test('the next Level gets its Pauses back', async () => {
+    const { game } = await startedGame();
+    for (let i = 0; i < 3; i++) {
+      game.pause();
+      game.resume();
+    }
+    game.levelClear();
+    await vi.advanceTimersByTimeAsync(0); // next Level's words loaded
+
+    game.start();
+
+    expect(game.pause()).toBe(true);
+  });
+
   test('a Game finished while paused starts the next one unpaused', async () => {
     const { game } = await startedGame();
     game.pause();
