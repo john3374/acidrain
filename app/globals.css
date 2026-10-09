@@ -7,7 +7,7 @@
 }
 @font-face{font-family:DigitalDismay;src:url(/DigitalDismay.otf) format('woff');font-weight:400;font-style:normal}
 @font-face{font-family:ChosunGs;src:url(https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-04@1.0/ChosunGs.woff) format('woff');font-weight:400;font-style:normal}
-main{color:#030007;background:#aaa;-webkit-touch-callout:none;-webkit-user-select:none;-khtml-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;border:.0625rem solid #000;width:100vw;height:100vh;padding:.5rem;font-family:ChosunGs,serif;font-weight:600;letter-spacing:.125rem;overflow:hidden;font-family:ChosunGs, serif}
+main{color:#030007;background:#aaa;-webkit-touch-callout:none;-webkit-user-select:none;-khtml-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;border:.0625rem solid #000;width:100vw;height:100vh;height:100dvh;display:flex;flex-direction:column;padding:.5rem;font-family:ChosunGs,serif;font-weight:600;letter-spacing:.125rem;overflow:hidden;font-family:ChosunGs, serif}
 .title{text-wrap:nowrap;font-size:1.25em;display:flex;color:#eee;background:#00008b;height:2.25rem;align-items:center;justify-content:space-between}
 .title-text{display:flex;align-items:center}
 .logo{vertical-align:bottom;margin-bottom:.125em;display:inline-block}
@@ -38,8 +38,8 @@ main{color:#030007;background:#aaa;-webkit-touch-callout:none;-webkit-user-selec
 .life:nth-child(n+7){background:#00008b}
 .life:nth-child(n+13){background:#ff0}
 .life-container{width:40%;color:#00008b}
-.game{height:calc(100vh - 10.25rem);width:100%}
-.footer{font-size:1.25em;height:5rem;font-weight:500}
+.game{flex:1 1 0;min-height:0;width:100%}
+.footer{font-size:1.25em;height:5rem;flex-shrink:0;font-weight:500}
 #footer-input{display:flex;position:relative;justify-content:center}
 #footer-input::after{color:transparent;position:absolute;content:attr(data-input)}
 input[type=text]{font-family:ChosunGs,serif;font-weight:600;letter-spacing:.0625rem;border:.1875rem solid #030007;height:2rem;width:13vw;margin:0 0 -.1875rem 0;color:transparent;text-shadow:0 0 0 #030007}
@@ -52,7 +52,8 @@ input[type=text]{width:20vw}
 .title{font-size:1em;height:1.75rem}
 }
 @media only screen and (max-width:600px){
-input[type=text]{width:40vw}
+/* 16px keeps iPhone Safari from zooming in when the input takes focus. */
+input[type=text]{width:40vw;font-size:16px}
 .popup-content{width:90vw!important;overflow:scroll}
 .level-select-content{margin:1rem .5rem}
 .level-select-list{padding:.5rem 2rem}
@@ -88,6 +89,8 @@ input:focus{outline:2px solid #00008b;outline-offset:2px}
 .leaderboard td:first-child{flex:1.5}
 .tutorial{top:6rem;position:fixed;display:flex;font-family:ChosunGs,serif;font-size:1.5em;justify-content:center;text-align:center;background-color:#777;padding:1.25em;font-size:larger;font-weight:500;box-shadow:-.125rem -.125rem #eee;letter-spacing:.25rem;flex-direction:column;color:#ff0}
 .button.quit{font-family:san-serif}
+.rotate-notice{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:#aaa}
+.rotate-notice-text{color:#fff;background:#00008b;padding:1.25em;text-align:center;line-height:2;box-shadow:-.125rem -.125rem #eee;letter-spacing:.25rem}
 .achievements-earned{margin-top:1em;display:flex;flex-direction:column;align-items:center;gap:.5em;color:#fff;background:#00008b;padding:1em 1.25em;font-weight:500;box-shadow:-.125rem -.125rem #eee;letter-spacing:.125rem}
 .achievements-earned-title{color:#ff0}
 .achievement-badge{border:.1875rem double #ff0;padding:.25em .75em}

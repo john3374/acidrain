@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import Stopwatch from './Stopwatch.js';
+import { gameTimeAfter, NO_GAME } from './gameTime.js';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -50,6 +51,24 @@ describe('Stopwatch', () => {
     render({ start, end: start + 5000 });
     wait(30_000);
     expect(shown()).toBe('00:05');
+  });
+
+  test('keeps elapsed time visible immediately after a long Pause resumes', () => {
+    let time = gameTimeAfter(NO_GAME, 'play', Date.now());
+    render(time);
+    wait(3500);
+    time = gameTimeAfter(time, 'pause', Date.now());
+    render(time);
+    expect(shown()).toBe('00:03');
+
+    wait(60_000);
+    expect(shown()).toBe('00:03');
+    time = gameTimeAfter(time, 'resume', Date.now());
+    render(time);
+    expect(shown()).toBe('00:03');
+
+    wait(1000);
+    expect(shown()).toBe('00:04');
   });
 
   test('resets to 00:00 when the next Game starts', () => {

@@ -6,11 +6,13 @@ import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 
 import ButtonLogin from '@/components/ButtonLogin';
+import RotateNotice, { useLandscapePhone } from '@/components/RotateNotice';
 import { achievementById } from '@/game/achievements';
 import ScoreBoard from '@/components/ScoreBoard';
 import { NO_GAME, gameTimeAfter } from '@/components/gameTime';
 import { clientId, socket } from '@/components/socket';
 import Stopwatch from '@/components/Stopwatch';
+import useViewportHeight from '@/components/useViewportHeight';
 import 'reactjs-popup/dist/index.css';
 
 const Popup = dynamic(() => import('reactjs-popup'), { ssr: false });
@@ -24,6 +26,8 @@ const Home = () => {
   // True between `gameover` and leaving the game-over screen. A ref, because `result` can arrive in the same
   // batch as `gameover`, before React has committed the new gameState.
   const awaitingResult = useRef(false);
+  // True while the server holds the Game because the phone is sideways and the rotate notice covers it.
+  const pausedForRotation = useRef(false);
   // Game overs seen on this connection; a `result` for an earlier Game (its `sequence` is lower) is stale.
   const gamesFinished = useRef(0);
   const [showPopup, setShowPopup] = useState({ game: false, levelSelect: false, score: false, settings: false, profile: false });
@@ -42,6 +46,10 @@ const Home = () => {
   const [online, setOnline] = useState(false);
   const [bgWord, setBgWord] = useState(() => (typeof window === 'undefined' ? '#aaa' : localStorage.getItem('wordBgColour') || '#aaa'));
   const { data: session, status } = useSession();
+  const viewportHeight = useViewportHeight();
+  const landscape = useLandscapePhone();
+  // The notice never hides a running Game: once a Level's Pauses are used up, it stays playable sideways.
+  const showRotateNotice = landscape && (gameState !== GAME_STATE.PLAYING || gameTime.paused);
   const titleText = `랜덤타자연습 (놀이마당 ${stat.level})`;
 
   const resetGame = () => {
@@ -66,6 +74,14 @@ const Home = () => {
     setFooterText('사이띄개를 누르세요');
     setGameState(GAME_STATE.READY);
   };
+
+  // Pause the Game while the rotate notice hides it, and resume once the phone is upright again.
+  useEffect(() => {
+    const pause = landscape && gameState === GAME_STATE.PLAYING;
+    if (pause === pausedForRotation.current) return;
+    pausedForRotation.current = pause;
+    socket.emit('state', pause ? 'pause' : 'resume');
+  }, [landscape, gameState]);
 
   useEffect(() => {
     const ctx = canvasRef.current.getContext('2d');
@@ -107,6 +123,7 @@ const Home = () => {
     });
     socket.on('connect', () => {
       gamesFinished.current = 0;
+      pausedForRotation.current = false;
     });
     socket.on('state', cmd => {
       const now = Date.now();
@@ -226,6 +243,8 @@ const Home = () => {
               break;
             case GAME_STATE.PLAYING:
               {
+                // Words don't count during a Pause; keep what was typed for after it.
+                if (gameTime.paused) break;
                 const trimmed = e.target.value.trim();
                 if (trimmed) socket.emit('game', trimmed);
                 e.target.value = '';
@@ -249,7 +268,7 @@ const Home = () => {
   // };
 
   return (
-    <main onClick={() => inputRef.current.focus()}>
+    <main style={viewportHeight ? { height: viewportHeight } : undefined} onClick={() => inputRef.current.focus()}>
       <div className="title">
         <div className="title-text">
           <Image className="logo" src="/title.png" alt="logo" width={36} height={30} />
@@ -454,6 +473,7 @@ const Home = () => {
           )}
         </div>
       )}
+      {showRotateNotice && <RotateNotice />}
     </main>
   );
 };

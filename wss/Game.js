@@ -32,6 +32,9 @@ class SeededRandom {
   }
 }
 
+// Enough for a player who turns their phone by accident; too few to turn the Pause into free thinking time.
+const PAUSES_PER_LEVEL = 3;
+
 class Game {
   #client;
   #position;
@@ -48,6 +51,13 @@ class Game {
   #flawlessClear;
   #levelTypos;
   #levelLife;
+  // The drop timer is stopped mid-Level while the player can't see the game (a phone turned sideways).
+  #paused = false;
+  // When the next drop is due, and how much of its wait was left at the Pause: resuming waits only that long,
+  // so pausing and resuming over and over can't hold the words up.
+  #dropDue;
+  #dropLeft;
+  #pausesLeft;
 
   constructor(client, level = 1) {
     this.#client = client;
@@ -80,6 +90,8 @@ class Game {
     client.on('game', word => {
       const submitted = typeof word === 'string' ? word.trim() : '';
       if (!submitted || submitted.length > 100) return;
+      // The words are hidden while paused; typing them then would be free Hits.
+      if (this.#paused) return;
 
       for (let i = 0; i < this.#position.length; i++) {
         if (this.#position[i].word === submitted) {
@@ -150,7 +162,8 @@ class Game {
     this.#client.emit('game', this.getState());
     this.#dropOffset = 0.2;
   }
-  #gameUpdate() {
+  #gameUpdate(delay = this.#dropSpeed) {
+    this.#dropDue = Date.now() + delay;
     this.#loopId = setTimeout(() => {
       if (this.words.length > 0) {
         if (this.#random.float() < this.#dropOffset) {
@@ -183,7 +196,7 @@ class Game {
       this.row = [];
       this.#client.emit('game', this.getState());
       this.#gameUpdate();
-    }, this.#dropSpeed);
+    }, delay);
   }
 
   // Every word of the Level has been typed or has landed while pH remains: the next Level follows.
@@ -200,7 +213,7 @@ class Game {
   }
 
   start() {
-    if (this.#loopId) return;
+    if (this.#loopId || this.#paused) return;
 
     this.width = this.#client.width;
     this.charWidth = this.#client.charWidth;
@@ -210,13 +223,34 @@ class Game {
     this.#startingLevel ??= this.level;
     this.#levelTypos = this.incorrect;
     this.#levelLife = this.life;
+    this.#pausesLeft = PAUSES_PER_LEVEL;
     console.log('start', this.#client.gameId, 'speed:', this.#dropSpeed);
     this.#gameUpdate();
+  }
+
+  // Holds the falling words, pH and Score where they are. Only a Level in progress can pause,
+  // and only PAUSES_PER_LEVEL times; after that the Game keeps running.
+  pause() {
+    if (!this.#loopId || this.#pausesLeft <= 0) return false;
+    this.#pausesLeft--;
+    clearTimeout(this.#loopId);
+    this.#loopId = null;
+    this.#dropLeft = Math.max(0, this.#dropDue - Date.now());
+    this.#paused = true;
+    return true;
+  }
+
+  resume() {
+    if (!this.#paused) return false;
+    this.#paused = false;
+    this.#gameUpdate(this.#dropLeft);
+    return true;
   }
 
   stop() {
     clearTimeout(this.#loopId);
     this.#loopId = null;
+    this.#paused = false;
     this.#position = [];
     this.ready = false;
     if (this.bonus > 0) {
@@ -300,6 +334,7 @@ class Game {
   abandon() {
     clearTimeout(this.#loopId);
     this.#loopId = null;
+    this.#paused = false;
     this.#position = [];
     this.#scoreRecorded = true;
   }
