@@ -9,12 +9,12 @@ const isLandscapePhone = () => {
   return phone && landscape;
 };
 
-// Covers the game asking the player to turn their phone upright.
-const RotateNotice = () => {
-  const [show, setShow] = useState(false);
+// Whether the player is holding a phone sideways; false until the browser has been asked.
+export const useLandscapePhone = () => {
+  const [landscape, setLandscape] = useState(false);
 
   useEffect(() => {
-    const update = () => setShow(isLandscapePhone());
+    const update = () => setLandscape(isLandscapePhone());
     update();
     window.screen.orientation?.addEventListener('change', update);
     window.addEventListener('orientationchange', update);
@@ -24,16 +24,18 @@ const RotateNotice = () => {
     };
   }, []);
 
-  if (!show) return null;
-  return (
-    <div className="rotate-notice" role="alert">
-      <div className="rotate-notice-text">
-        화면을 세로로 돌려주세요
-        <br />
-        <span className="yellow">세로 모드에서만 놀이할 수 있습니다</span>
-      </div>
-    </div>
-  );
+  return landscape;
 };
+
+// Covers the game asking the player to turn their phone upright.
+const RotateNotice = () => (
+  <div className="rotate-notice" role="alert">
+    <div className="rotate-notice-text">
+      화면을 세로로 돌려주세요
+      <br />
+      <span className="yellow">세로 모드에서만 놀이할 수 있습니다</span>
+    </div>
+  </div>
+);
 
 export default RotateNotice;

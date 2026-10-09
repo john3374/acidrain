@@ -24,6 +24,10 @@ _Avoid_: Stage, round, 단계
 The moment every word of a Level has been typed or has landed while the player still has pH. The next Level follows it.
 _Avoid_: Level up, stage complete
 
+**Pause**:
+A hold on a Level in progress while the player can't see it (a phone turned sideways). No words fall, pH and Score stay put, typed words don't count, and the Game's time stops until it resumes.
+_Avoid_: Suspend, freeze
+
 **pH**:
 The player's remaining life in a Game. It falls when a word reaches the bottom, and the Game ends when it runs out.
 _Avoid_: Life, health, HP

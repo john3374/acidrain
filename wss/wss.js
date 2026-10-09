@@ -9,7 +9,7 @@ import { Server } from 'socket.io';
 const MIN_LEVEL = 1;
 const MAX_LEVEL = 10;
 const CLIENT_ID_PATTERN = /^[a-z0-9_-]{6,80}$/i;
-const ALLOWED_STATES = new Set(['cReady', 'play', 'gameover']);
+const ALLOWED_STATES = new Set(['cReady', 'play', 'pause', 'resume', 'gameover']);
 
 const clampLevel = value => {
   const level = Number(value);
@@ -138,6 +138,13 @@ io.on('connection', client => {
         }
         break;
       case 'play':
+        break;
+      // Echoed only when the Game actually paused or resumed, so the browser's stopwatch follows the server.
+      case 'pause':
+        if (game.pause()) client.emit('state', 'pause');
+        break;
+      case 'resume':
+        if (game.resume()) client.emit('state', 'resume');
         break;
       case 'gameover':
         client.emit('state', 'gameover');

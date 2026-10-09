@@ -9,8 +9,10 @@ const useViewportHeight = () => {
     const vv = window.visualViewport;
     if (!vv) return;
     const update = () => {
-      // Times scale, so pinch-zooming doesn't shrink the game.
-      setHeight(Math.round(vv.height * vv.scale));
+      // While zoomed in, the visible height no longer matches the page, and scrolling is how the player
+      // reaches the input: keep the last fitted height and leave the scroll alone.
+      if (vv.scale > 1) return;
+      setHeight(Math.round(vv.height));
       // Some browsers scroll the page to reveal the focused input; the game already fits, so undo it.
       window.scrollTo(0, 0);
     };

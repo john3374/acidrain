@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 
 import ButtonLogin from '@/components/ButtonLogin';
-import RotateNotice from '@/components/RotateNotice';
+import RotateNotice, { useLandscapePhone } from '@/components/RotateNotice';
 import { achievementById } from '@/game/achievements';
 import ScoreBoard from '@/components/ScoreBoard';
 import { NO_GAME, gameTimeAfter } from '@/components/gameTime';
@@ -26,6 +26,8 @@ const Home = () => {
   // True between `gameover` and leaving the game-over screen. A ref, because `result` can arrive in the same
   // batch as `gameover`, before React has committed the new gameState.
   const awaitingResult = useRef(false);
+  // True while the server holds the Game because the phone is sideways and the rotate notice covers it.
+  const pausedForRotation = useRef(false);
   // Game overs seen on this connection; a `result` for an earlier Game (its `sequence` is lower) is stale.
   const gamesFinished = useRef(0);
   const [showPopup, setShowPopup] = useState({ game: false, levelSelect: false, score: false, settings: false, profile: false });
@@ -45,6 +47,7 @@ const Home = () => {
   const [bgWord, setBgWord] = useState(() => (typeof window === 'undefined' ? '#aaa' : localStorage.getItem('wordBgColour') || '#aaa'));
   const { data: session, status } = useSession();
   const viewportHeight = useViewportHeight();
+  const landscape = useLandscapePhone();
   const titleText = `랜덤타자연습 (놀이마당 ${stat.level})`;
 
   const resetGame = () => {
@@ -69,6 +72,14 @@ const Home = () => {
     setFooterText('사이띄개를 누르세요');
     setGameState(GAME_STATE.READY);
   };
+
+  // Pause the Game while the rotate notice hides it, and resume once the phone is upright again.
+  useEffect(() => {
+    const pause = landscape && gameState === GAME_STATE.PLAYING;
+    if (pause === pausedForRotation.current) return;
+    pausedForRotation.current = pause;
+    socket.emit('state', pause ? 'pause' : 'resume');
+  }, [landscape, gameState]);
 
   useEffect(() => {
     const ctx = canvasRef.current.getContext('2d');
@@ -110,6 +121,7 @@ const Home = () => {
     });
     socket.on('connect', () => {
       gamesFinished.current = 0;
+      pausedForRotation.current = false;
     });
     socket.on('state', cmd => {
       const now = Date.now();
@@ -457,7 +469,7 @@ const Home = () => {
           )}
         </div>
       )}
-      <RotateNotice />
+      {landscape && <RotateNotice />}
     </main>
   );
 };

@@ -48,6 +48,8 @@ class Game {
   #flawlessClear;
   #levelTypos;
   #levelLife;
+  // The drop timer is stopped mid-Level while the player can't see the game (a phone turned sideways).
+  #paused = false;
 
   constructor(client, level = 1) {
     this.#client = client;
@@ -80,6 +82,8 @@ class Game {
     client.on('game', word => {
       const submitted = typeof word === 'string' ? word.trim() : '';
       if (!submitted || submitted.length > 100) return;
+      // The words are hidden while paused; typing them then would be free Hits.
+      if (this.#paused) return;
 
       for (let i = 0; i < this.#position.length; i++) {
         if (this.#position[i].word === submitted) {
@@ -200,7 +204,7 @@ class Game {
   }
 
   start() {
-    if (this.#loopId) return;
+    if (this.#loopId || this.#paused) return;
 
     this.width = this.#client.width;
     this.charWidth = this.#client.charWidth;
@@ -214,9 +218,26 @@ class Game {
     this.#gameUpdate();
   }
 
+  // Holds the falling words, pH and Score where they are. Only a Level in progress can pause.
+  pause() {
+    if (!this.#loopId) return false;
+    clearTimeout(this.#loopId);
+    this.#loopId = null;
+    this.#paused = true;
+    return true;
+  }
+
+  resume() {
+    if (!this.#paused) return false;
+    this.#paused = false;
+    this.#gameUpdate();
+    return true;
+  }
+
   stop() {
     clearTimeout(this.#loopId);
     this.#loopId = null;
+    this.#paused = false;
     this.#position = [];
     this.ready = false;
     if (this.bonus > 0) {
@@ -300,6 +321,7 @@ class Game {
   abandon() {
     clearTimeout(this.#loopId);
     this.#loopId = null;
+    this.#paused = false;
     this.#position = [];
     this.#scoreRecorded = true;
   }

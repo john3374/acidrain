@@ -401,3 +401,75 @@ describe('an abandoned Game', () => {
     expect(saved).toHaveLength(1);
   });
 });
+
+describe('a paused Game', () => {
+  beforeEach(() => {
+    saved.length = 0;
+    Player.exists.mockReset();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const startedGame = async () => {
+    const client = makeClient(undefined);
+    const game = new Game(client, 1);
+    await vi.advanceTimersByTimeAsync(0); // words loaded
+    game.start();
+    await vi.advanceTimersByTimeAsync(5_000);
+    return { client, game, submit: client.on.mock.calls.find(([event]) => event === 'game')[1] };
+  };
+
+  test('drops no words and loses no pH until it resumes', async () => {
+    const { client, game } = await startedGame();
+    game.life = 0;
+
+    expect(game.pause()).toBe(true);
+    const emitsBefore = client.emit.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(60 * 60_000);
+
+    expect(client.emit.mock.calls.length).toBe(emitsBefore);
+    expect(saved).toEqual([]);
+
+    expect(game.resume()).toBe(true);
+    await vi.advanceTimersByTimeAsync(60 * 60_000);
+
+    expect(client.emit).toHaveBeenCalledWith('state', 'gameover');
+    expect(saved).toHaveLength(1);
+  });
+
+  test('ignores words typed while paused, so a pause gives no free Hits', async () => {
+    const { game, submit } = await startedGame();
+    const { position, correct, incorrect } = game.getState();
+    expect(position.length).toBeGreaterThan(0);
+
+    game.pause();
+    submit(position[0].word);
+    submit('nope');
+
+    expect(game.getState()).toMatchObject({ correct, incorrect });
+  });
+
+  test('cannot pause between Levels, when nothing is falling', async () => {
+    const { game } = await startedGame();
+    game.levelClear();
+
+    expect(game.pause()).toBe(false);
+    expect(game.resume()).toBe(false);
+  });
+
+  test('a Game finished while paused starts the next one unpaused', async () => {
+    const { game } = await startedGame();
+    game.pause();
+    game.stop();
+    game.resetGame();
+    await vi.advanceTimersByTimeAsync(0);
+
+    game.start();
+
+    expect(game.status()).toBeTruthy();
+    expect(game.resume()).toBe(false);
+  });
+});
