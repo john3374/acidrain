@@ -33,7 +33,7 @@ const Home = () => {
   // Enter was pressed while a syllable was still being composed; submit once it's committed.
   const submitAfterComposition = useRef(false);
   const [showPopup, setShowPopup] = useState({ game: false, levelSelect: false, score: false, settings: false, profile: false });
-  const [popupText, setPopupText] = useState('1  놀 이 마 당');
+  const [popupText, setPopupText] = useState(null);
   const [footerText, setFooterText] = useState('연결을 기다리는 중입니다');
   const [popupColour, setPopupColour] = useState('');
   const [stat, setStat] = useState({ level: 1, correct: 0, incorrect: 0, accuracy: 0, score: 10, life: 18 });
@@ -70,8 +70,9 @@ const Home = () => {
     setGameState(GAME_STATE.BEFORE_START);
   };
 
-  const initGame = level => {
-    setPopupText(`${level ?? stat.level}  놀 이 마 당`);
+  // The Level banner reads stat.level when it renders: `sReady` can arrive before the handlers see the new Level.
+  const initGame = () => {
+    setPopupText(null);
     setShowPopup(prev => ({ ...prev, game: true }));
     setFooterText('사이띄개를 누르세요');
     setGameState(GAME_STATE.READY);
@@ -202,7 +203,7 @@ const Home = () => {
     setStat(prev => ({ ...prev, level }));
     socket.emit('startLevel', level);
     setShowPopup(prev => ({ ...prev, levelSelect: false }));
-    initGame(level);
+    initGame();
   };
 
   const populateLife = () => {
@@ -483,7 +484,7 @@ const Home = () => {
               </div>
             )}
           <div id="gameover" className={popupColour}>
-            {popupText}
+            {popupText ?? `${stat.level}  놀 이 마 당`}
           </div>
           {result?.achievements.length > 0 && (
             <div className="achievements-earned" aria-label="업적">
