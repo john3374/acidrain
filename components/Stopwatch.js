@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 
 const formatTimer = num => {
   const min = Math.floor(num / 60);
@@ -12,8 +12,11 @@ const Stopwatch = ({ start = null, end = null }) => {
   const [now, setNow] = useState(0);
   const running = start != null && end == null;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!running) return;
+    // Synchronize the clock before paint when a Game starts or resumes with a shifted start.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- A resumed clock must replace its stale sample before it is displayed.
+    setNow(Date.now());
     const timeId = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timeId);
   }, [running, start]);

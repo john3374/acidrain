@@ -25,7 +25,7 @@ The moment every word of a Level has been typed or has landed while the player s
 _Avoid_: Level up, stage complete
 
 **Pause**:
-A hold on a Level in progress while the player can't see it (a phone turned sideways). No words fall, pH and Score stay put, typed words don't count, and the Game's time stops until it resumes.
+A hold on a Level in progress while the player can't see it (a phone turned sideways). No words fall, pH and Score stay put, typed words don't count, and the Game's time stops until it resumes. A Level allows three; after that the Game keeps running.
 _Avoid_: Suspend, freeze
 
 **pH**:

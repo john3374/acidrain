@@ -48,6 +48,8 @@ const Home = () => {
   const { data: session, status } = useSession();
   const viewportHeight = useViewportHeight();
   const landscape = useLandscapePhone();
+  // The notice never hides a running Game: once a Level's Pauses are used up, it stays playable sideways.
+  const showRotateNotice = landscape && (gameState !== GAME_STATE.PLAYING || gameTime.paused);
   const titleText = `랜덤타자연습 (놀이마당 ${stat.level})`;
 
   const resetGame = () => {
@@ -241,6 +243,8 @@ const Home = () => {
               break;
             case GAME_STATE.PLAYING:
               {
+                // Words don't count during a Pause; keep what was typed for after it.
+                if (gameTime.paused) break;
                 const trimmed = e.target.value.trim();
                 if (trimmed) socket.emit('game', trimmed);
                 e.target.value = '';
@@ -469,7 +473,7 @@ const Home = () => {
           )}
         </div>
       )}
-      {landscape && <RotateNotice />}
+      {showRotateNotice && <RotateNotice />}
     </main>
   );
 };
