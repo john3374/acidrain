@@ -651,3 +651,40 @@ describe('loading words', () => {
     expect(game.ready).toBe(true);
   });
 });
+
+describe('the database budget', () => {
+  beforeEach(() => {
+    saved.length = 0;
+    Player.exists.mockReset();
+    Word.aggregate.mockClear();
+  });
+
+  test('is charged for every Word sample and every Score, including a Game over from pH running out', async () => {
+    vi.useFakeTimers();
+    const spend = vi.fn(() => true);
+    const client = makeClient(undefined);
+    const game = new Game(client, 1, { spend });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(spend).toHaveBeenCalledTimes(1); // the first Word sample
+    game.start();
+    game.life = 0;
+
+    await vi.advanceTimersByTimeAsync(60 * 60_000); // pH runs out: next Word sample and the Score
+    vi.useRealTimers();
+
+    expect(client.emit).toHaveBeenCalledWith('state', 'gameover');
+    expect(spend).toHaveBeenCalledTimes(3);
+    expect(Word.aggregate).toHaveBeenCalledTimes(2);
+    expect(saved).toHaveLength(1);
+  });
+
+  test('once spent, skips the Word sample and the Score', async () => {
+    const game = new Game(makeClient(undefined), 1, { spend: () => false });
+    game.recordScore();
+    await flush();
+
+    expect(Word.aggregate).not.toHaveBeenCalled();
+    expect(game.ready).toBe(false);
+    expect(saved).toEqual([]);
+  });
+});

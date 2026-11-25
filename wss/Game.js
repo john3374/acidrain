@@ -60,9 +60,12 @@ class Game {
   #pausesLeft;
   // A Word sample is on its way: asking again before it arrives would only queue more database work.
   #loadingWords = false;
+  // Charged once per Word sample and once per saved Score; false means the budget is spent and the work is skipped.
+  #spend;
 
-  constructor(client, level = 1) {
+  constructor(client, level = 1, { spend = () => true } = {}) {
     this.#client = client;
+    this.#spend = spend;
     this.level = level;
     this.#populateWords();
     this.ready = false;
@@ -105,6 +108,7 @@ class Game {
 
   #populateWords() {
     if (this.ready || this.#loadingWords) return;
+    if (!this.#spend()) return;
     this.#loadingWords = true;
     Word.aggregate([{ $unwind: '$word' }, { $sample: { size: 20 } }, { $project: { _id: 0 } }])
       .then(words => {
@@ -280,6 +284,7 @@ class Game {
     if (this.#scoreRecorded) return;
     this.#scoreRecorded = true;
     const sequence = ++this.#finished;
+    if (!this.#spend()) return;
 
     // Capture the Game's numbers now: the caller resets the Game right after this returns.
     const game = {

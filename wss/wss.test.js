@@ -283,9 +283,29 @@ describe('one address starting and quitting Games over and over', () => {
       cycles++;
     }
 
-    expect(h.saved.length).toBeLessThanOrEqual(60);
-    expect(h.wordLoads).toBeLessThanOrEqual(61);
+    // Each Word sample and each Score is one unit of a 120-unit burst (plus a little refill while the test runs).
+    expect(h.saved.length + h.wordLoads).toBeLessThanOrEqual(125);
+    expect(cycles).toBeLessThan(200);
   });
+
+  test('retrying a failing Word sample draws on the same budget', async () => {
+    const ip = nextAddress();
+    h.failWordLoads = 10_000;
+    const began = Date.now();
+    const client = await connect({ realIp: ip });
+    client.send('init', INIT);
+    await flush();
+    for (let i = 0; i < 400 && !client.disconnected; i++) {
+      client.send('startLevel', 1);
+      await flush();
+      // Stay under the per-socket message rate, so only the address budget can stop this.
+      if (i % 20 === 19) await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    expect(client.disconnected).toBe(true);
+    // A 120-unit burst plus 4 a second of refill while the test ran.
+    expect(h.wordLoads).toBeLessThanOrEqual(120 + Math.ceil(((Date.now() - began) / 1000) * 4) + 1);
+  }, 30_000);
 });
 
 describe('the result sequence', () => {

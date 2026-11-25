@@ -13,10 +13,10 @@ const ALLOWED_STATES = new Set(['cReady', 'play', 'pause', 'resume', 'gameover']
 // Each socket may send a burst of EVENT_BURST messages, refilled at EVENT_RATE a second. Play needs a few a second.
 const EVENT_BURST = 40;
 const EVENT_RATE = 20;
-// Per address, Games created and Games finished share one budget that survives reconnects: each costs a Word sample
-// and a Score. A classroom starting together fits in the burst.
-const WORK_BURST = 60;
-const WORK_RATE = 2;
+// Per address, every Word sample and every saved Score draw on one budget that survives reconnects, whatever
+// started them (a new Game, a Level clear, a Game over, a retry). A classroom starting together fits in the burst.
+const WORK_BURST = 120;
+const WORK_RATE = 4;
 // No message the browser sends is more than a few hundred bytes.
 const MAX_MESSAGE_BYTES = 16 * 1024;
 const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
@@ -168,9 +168,16 @@ io.use(async (socket, next) => {
 io.on('connection', client => {
   const ip = clientIp(client.request);
   limitEvents(client);
-  const overBudget = () => {
-    console.log(client.id, ip, 'used up its address budget; disconnecting');
-    client.disconnect(true);
+  let cutOff = false;
+  // Handed to the Game: it asks before each Word sample and each Score.
+  const spend = () => {
+    if (spendWork(ip)) return true;
+    if (!cutOff) {
+      cutOff = true;
+      console.log(client.id, ip, 'used up its address budget; disconnecting');
+      client.disconnect(true);
+    }
+    return false;
   };
   console.log(client.id, ip, client.playerId ? 'player' : 'guest');
   // Old tabs still send `login` with a player id. Identity is resolved from the session cookie, so the payload is ignored.
@@ -195,8 +202,9 @@ io.on('connection', client => {
       game.resetGame();
       game.level = level;
     } else {
-      if (!spendWork(ip)) return overBudget();
-      games.set(client.id, new Game(client, level));
+      const created = new Game(client, level, { spend });
+      // Over budget, the Game's first Word sample disconnected the socket.
+      if (!client.disconnected) games.set(client.id, created);
     }
   });
   client.on('startLevel', value => {
@@ -248,7 +256,6 @@ io.on('connection', client => {
         client.emit('state', 'gameover');
         // Quitting before the first Level starts finishes nothing: no Score, no new Word sample.
         if (game.inProgress) {
-          if (!spendWork(ip)) return overBudget();
           game.stop();
           game.recordScore();
         } else {
