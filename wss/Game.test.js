@@ -606,6 +606,25 @@ describe('loading words', () => {
     Word.aggregate.mockImplementation(() => Promise.resolve([{ word: 'acid' }, { word: 'rain' }]));
   });
 
+  test('a failure between Levels ends the Game unrecorded, so a Level can be chosen again', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const client = makeClient(undefined);
+    const game = new Game(client, 1);
+    await flush();
+    game.start();
+    Word.aggregate.mockReturnValueOnce(Promise.reject(new Error('db down')));
+
+    game.levelClear(); // stop() fetches the next Level's words
+    await flush();
+
+    expect(game.inProgress).toBe(false);
+    expect(client.emit).toHaveBeenCalledWith('state', 'restart');
+    game.loadWords();
+    await flush();
+    expect(game.ready).toBe(true);
+    log.mockRestore();
+  });
+
   test('a database error sends the browser back to Level select instead of ending the process', async () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     Word.aggregate.mockReturnValueOnce(Promise.reject(new Error('db down')));

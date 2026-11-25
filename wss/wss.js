@@ -13,18 +13,26 @@ const ALLOWED_STATES = new Set(['cReady', 'play', 'pause', 'resume', 'gameover']
 // Each socket may send a burst of EVENT_BURST messages, refilled at EVENT_RATE a second. Play needs a few a second.
 const EVENT_BURST = 40;
 const EVENT_RATE = 20;
+// Per address, Games created and Games finished share one budget that survives reconnects: each costs a Word sample
+// and a Score. A classroom starting together fits in the burst.
+const WORK_BURST = 60;
+const WORK_RATE = 2;
 // No message the browser sends is more than a few hundred bytes.
 const MAX_MESSAGE_BYTES = 16 * 1024;
 const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
+// Only numbers and numeric strings: Number() on an object can throw (`{"toString":0}`), and a throw inside a
+// handler ends the process.
+const toNumber = value => (typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN);
+
 const clampLevel = value => {
-  const level = Number(value);
+  const level = toNumber(value);
   if (!Number.isFinite(level)) return null;
   return Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, Math.trunc(level)));
 };
 
 const getFinitePositiveNumber = value => {
-  const parsed = Number(value);
+  const parsed = toNumber(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
@@ -79,6 +87,23 @@ const clientIp = req => {
   return LOOPBACK_ADDRESSES.has(remote) && typeof forwarded === 'string' && forwarded ? forwarded : remote;
 };
 
+const workByIp = new Map();
+
+// Spends one unit of an address's database budget; false once it is used up.
+const spendWork = ip => {
+  const now = Date.now();
+  if (workByIp.size > 10000) {
+    for (const [key, bucket] of workByIp) if (now - bucket.last > (WORK_BURST / WORK_RATE) * 1000) workByIp.delete(key);
+  }
+  const bucket = workByIp.get(ip) ?? { tokens: WORK_BURST, last: now };
+  bucket.tokens = Math.min(WORK_BURST, bucket.tokens + ((now - bucket.last) / 1000) * WORK_RATE);
+  bucket.last = now;
+  workByIp.set(ip, bucket);
+  if (bucket.tokens < 1) return false;
+  bucket.tokens -= 1;
+  return true;
+};
+
 // Token bucket over a socket's incoming messages. A socket that floods is disconnected.
 const limitEvents = client => {
   let tokens = EVENT_BURST;
@@ -114,6 +139,17 @@ const io = new Server(server, {
     callback(null, (connectionsByIp.get(clientIp(req)) ?? 0) < maxConnectionsPerIp);
   },
 });
+// Count transports, not namespace sockets: a transport that never joins the namespace still holds a connection.
+io.engine.on('connection', transport => {
+  const ip = clientIp(transport.request);
+  connectionsByIp.set(ip, (connectionsByIp.get(ip) ?? 0) + 1);
+  transport.once('close', () => {
+    const left = (connectionsByIp.get(ip) ?? 1) - 1;
+    if (left > 0) connectionsByIp.set(ip, left);
+    else connectionsByIp.delete(ip);
+  });
+});
+
 // One Game per socket, keyed by the server's socket id. The browser's clientId is only a label (the page-load ID),
 // so another socket that learns it can't reach this Game.
 const games = new Map();
@@ -131,8 +167,11 @@ io.use(async (socket, next) => {
 
 io.on('connection', client => {
   const ip = clientIp(client.request);
-  connectionsByIp.set(ip, (connectionsByIp.get(ip) ?? 0) + 1);
   limitEvents(client);
+  const overBudget = () => {
+    console.log(client.id, ip, 'used up its address budget; disconnecting');
+    client.disconnect(true);
+  };
   console.log(client.id, ip, client.playerId ? 'player' : 'guest');
   // Old tabs still send `login` with a player id. Identity is resolved from the session cookie, so the payload is ignored.
   client.on('login', () => {});
@@ -156,6 +195,7 @@ io.on('connection', client => {
       game.resetGame();
       game.level = level;
     } else {
+      if (!spendWork(ip)) return overBudget();
       games.set(client.id, new Game(client, level));
     }
   });
@@ -170,6 +210,8 @@ io.on('connection', client => {
       game.level = level;
       game.score = 10;
       game.bonus = (level - 1) * 850;
+      // After a failed Word sample, choosing a Level tries again.
+      game.loadWords();
       console.log('set level to', game.level);
     }
   });
@@ -206,8 +248,11 @@ io.on('connection', client => {
         client.emit('state', 'gameover');
         // Quitting before the first Level starts finishes nothing: no Score, no new Word sample.
         if (game.inProgress) {
+          if (!spendWork(ip)) return overBudget();
           game.stop();
           game.recordScore();
+        } else {
+          game.finishUnplayed();
         }
         game.resetGame();
         client.emit('game', game.getState());
@@ -224,9 +269,6 @@ io.on('connection', client => {
   });
   client.on('disconnect', reason => {
     endGame();
-    const left = (connectionsByIp.get(ip) ?? 1) - 1;
-    if (left > 0) connectionsByIp.set(ip, left);
-    else connectionsByIp.delete(ip);
     console.log(client.id, 'disconnected:', reason, '- games:', games.size, 'sockets:', io.engine.clientsCount);
   });
 });

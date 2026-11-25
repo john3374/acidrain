@@ -113,14 +113,21 @@ class Game {
         this.#client.emit('state', 'sReady');
       })
       // Without this a database error is an unhandled rejection, which ends the process and every Game on it.
+      // The Game can't go on without words: it ends unrecorded, and choosing a Level tries again.
       .catch(err => {
         console.log('failed to load words', err);
+        this.resetGame();
         this.#client.emit('state', 'restart');
       })
       .finally(() => {
         this.#loadingWords = false;
       });
   }
+  // Fetches words if the Game has none and none are on their way.
+  loadWords() {
+    this.#populateWords();
+  }
+
   #checkOverlap(word, begin, end) {
     if (this.row.length === 0) {
       this.row.push([begin, end]);
@@ -296,6 +303,12 @@ class Game {
     this.#savePlayerScore(score, playerId, pageLoadId)
       .then(() => this.#sendResult(client, score, game, sequence))
       .catch(err => console.log('failed to save score', err));
+  }
+
+  // A Game over with nothing to record (quit before the first Level) still counts toward `sequence`: the browser
+  // counts every Game over, and a `result` numbered behind it is ignored as stale.
+  finishUnplayed() {
+    this.#finished++;
   }
 
   // The additive `result` event: the Achievements this Game earned. A Guest only sees what a Player would have kept.

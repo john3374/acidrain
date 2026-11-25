@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 
 // The real socket handlers, with the HTTP server, Socket.io transport and database replaced by fakes.
-const h = vi.hoisted(() => ({ io: null, saved: [], wordLoads: 0 }));
+const h = vi.hoisted(() => ({ io: null, saved: [], wordLoads: 0, failWordLoads: 0 }));
 
 vi.mock('dotenv', () => ({ default: { config: () => ({}) } }));
 vi.mock('../db.js', () => ({ connectDB: () => new Promise(() => {}) }));
@@ -12,7 +12,8 @@ vi.mock('socket.io', () => ({
     constructor(_server, options) {
       h.io = this;
       this.options = options;
-      this.engine = { clientsCount: 0 };
+      const engineHandlers = [];
+      this.engine = { clientsCount: 0, on: (event, fn) => event === 'connection' && engineHandlers.push(fn), handlers: engineHandlers };
       this.middleware = [];
     }
     use(fn) {
@@ -37,6 +38,10 @@ vi.mock('../schema/index.js', () => {
     Word: {
       aggregate: () => {
         h.wordLoads++;
+        if (h.failWordLoads > 0) {
+          h.failWordLoads--;
+          return Promise.reject(new Error('db down'));
+        }
         return Promise.resolve(Array.from({ length: 20 }, (_, i) => ({ word: `word${i}` })));
       },
     },
@@ -50,15 +55,28 @@ const flush = async () => {
   for (let i = 0; i < 5; i++) await new Promise(resolve => setImmediate(resolve));
 };
 
+// An Engine.io transport: admitted by allowRequest, counted until it closes.
+const openTransport = async ({ remoteAddress = '127.0.0.1', realIp = '198.51.100.1' } = {}) => {
+  const request = { socket: { remoteAddress }, headers: realIp ? { 'x-real-ip': realIp } : {} };
+  const allowed = await new Promise(resolve => h.io.options.allowRequest(request, (_err, ok) => resolve(ok)));
+  if (!allowed) return null;
+  const closeHandlers = [];
+  const transport = { request, once: (event, fn) => event === 'close' && closeHandlers.push(fn), close: () => closeHandlers.forEach(fn => fn()) };
+  for (const fn of h.io.engine.handlers) fn(transport);
+  return transport;
+};
+
 let sockets = 0;
-const connect = async ({ remoteAddress = '127.0.0.1', realIp = '198.51.100.1' } = {}) => {
+const connect = async options => {
+  const transport = await openTransport(options);
+  if (!transport) return null;
+  const { request } = transport;
   const handlers = new Map();
   const packetMiddleware = [];
-  const request = { socket: { remoteAddress }, headers: realIp ? { 'x-real-ip': realIp } : {} };
   const client = {
     id: `socket${++sockets}`,
     request,
-    handshake: { address: remoteAddress, headers: {} },
+    handshake: { address: request.socket.remoteAddress, headers: {} },
     sent: [],
     disconnected: false,
     on(event, fn) {
@@ -72,8 +90,13 @@ const connect = async ({ remoteAddress = '127.0.0.1', realIp = '198.51.100.1' } 
       this.sent.push([event, data]);
     },
     disconnect() {
+      this.close('server namespace disconnect');
+    },
+    close(reason = 'transport close') {
+      if (this.disconnected) return;
       this.disconnected = true;
-      this.receive('disconnect', 'server namespace disconnect');
+      this.receive('disconnect', reason);
+      transport.close();
     },
     // Runs the packet middleware first, as Socket.io does.
     send(event, data) {
@@ -85,8 +108,6 @@ const connect = async ({ remoteAddress = '127.0.0.1', realIp = '198.51.100.1' } 
       for (const fn of handlers.get(event) ?? []) fn(data);
     },
   };
-  const allowed = await new Promise(resolve => h.io.options.allowRequest({ ...request, headers: { ...request.headers } }, (_err, ok) => resolve(ok)));
-  if (!allowed) return null;
   for (const fn of h.io.middleware) await new Promise(next => fn(client, next));
   h.io.onConnection(client);
   return client;
@@ -100,14 +121,20 @@ beforeAll(async () => {
   await import('./wss.js');
 });
 
+// Each test plays from its own address, so the per-address budget of one doesn't leak into the next.
+let addresses = 0;
+const nextAddress = () => `198.51.100.${++addresses}`;
+const play = () => connect({ realIp: nextAddress() });
+
 beforeEach(() => {
   h.saved.length = 0;
   h.wordLoads = 0;
+  h.failWordLoads = 0;
 });
 
 describe('quitting', () => {
   test('before the first Level starts saves no Score and loads no words', async () => {
-    const client = await connect();
+    const client = await play();
     client.send('init', INIT);
     await flush();
     h.wordLoads = 0;
@@ -121,7 +148,7 @@ describe('quitting', () => {
   });
 
   test('a started Game saves one Score', async () => {
-    const client = await connect();
+    const client = await play();
     client.send('init', INIT);
     await flush();
     client.send('state', 'cReady');
@@ -137,7 +164,7 @@ describe('quitting', () => {
 
 describe('choosing a Level', () => {
   test('a Level 10 start that is quit at once scores no bonus', async () => {
-    const client = await connect();
+    const client = await play();
     client.send('init', INIT);
     await flush();
     client.send('startLevel', 10);
@@ -150,7 +177,7 @@ describe('choosing a Level', () => {
   });
 
   test('is ignored while a Game is in progress', async () => {
-    const client = await connect();
+    const client = await play();
     client.send('init', INIT);
     await flush();
     client.send('state', 'cReady');
@@ -166,16 +193,16 @@ describe('choosing a Level', () => {
 
 describe('two sockets with the same page-load ID', () => {
   test('each keep their own Game', async () => {
-    const first = await connect();
+    const first = await play();
     first.send('init', INIT);
     await flush();
     first.send('state', 'cReady');
 
-    const second = await connect();
+    const second = await play();
     second.send('init', INIT);
     await flush();
     second.send('state', 'gameover');
-    second.receive('disconnect', 'client namespace disconnect');
+    second.close('client namespace disconnect');
     await flush();
 
     expect(h.saved).toEqual([]);
@@ -187,7 +214,7 @@ describe('two sockets with the same page-load ID', () => {
 
 describe('a socket that floods', () => {
   test('is disconnected and its Game is dropped', async () => {
-    const client = await connect();
+    const client = await play();
     client.send('init', INIT);
     await flush();
 
@@ -210,7 +237,90 @@ describe('connections from one address', () => {
     // A forged header from a non-proxy peer is ignored: that peer is counted by its own address.
     expect(await connect({ remoteAddress: '192.0.2.50', realIp: '203.0.113.10' })).not.toBeNull();
 
-    opened[0].receive('disconnect', 'transport close');
+    opened[0].close();
     expect(await connect({ realIp: '203.0.113.9' })).not.toBeNull();
+  });
+
+  test('count transports that never join the namespace', async () => {
+    const opened = [];
+    for (let i = 0; i < 100; i++) opened.push(await openTransport({ realIp: '203.0.113.20' }));
+    expect(opened.every(Boolean)).toBe(true);
+
+    expect(await openTransport({ realIp: '203.0.113.20' })).toBeNull();
+    opened[0].close();
+    expect(await openTransport({ realIp: '203.0.113.20' })).not.toBeNull();
+  });
+});
+
+describe('a malformed message', () => {
+  test('with an object where a number belongs is ignored instead of throwing', async () => {
+    const client = await play();
+    const hostile = { toString: 0 };
+
+    expect(() => client.send('startLevel', hostile)).not.toThrow();
+    expect(() => client.send('init', { clientId: 'pageload1', width: hostile, charWidth: 10, level: hostile })).not.toThrow();
+    expect(client.sent).toContainEqual(['state', 'restart']);
+  });
+});
+
+describe('one address starting and quitting Games over and over', () => {
+  test('is cut off once its budget is spent, even across new sockets', async () => {
+    const ip = nextAddress();
+    let client = await connect({ realIp: ip });
+    client.send('init', INIT);
+    await flush();
+    let cycles = 0;
+    while (cycles < 200) {
+      if (client.disconnected) {
+        client = await connect({ realIp: ip });
+        client.send('init', INIT);
+        await flush();
+        if (client.disconnected) break;
+      }
+      client.send('state', 'cReady');
+      client.send('state', 'gameover');
+      await flush();
+      cycles++;
+    }
+
+    expect(h.saved.length).toBeLessThanOrEqual(60);
+    expect(h.wordLoads).toBeLessThanOrEqual(61);
+  });
+});
+
+describe('the result sequence', () => {
+  test('stays in step with Game overs when a Game is quit before it starts', async () => {
+    const client = await play();
+    client.send('init', INIT);
+    await flush();
+    client.send('state', 'gameover'); // quit before starting: the browser counts this Game over
+    await flush();
+    client.send('state', 'cReady');
+    client.send('state', 'gameover');
+    await flush();
+
+    const gameOvers = client.sent.filter(([event, data]) => event === 'state' && data === 'gameover').length;
+    const results = client.sent.filter(([event]) => event === 'result').map(([, payload]) => payload.sequence);
+    expect(results).toEqual([gameOvers]);
+  });
+});
+
+describe('a failed Word sample', () => {
+  test('is tried again when a Level is chosen, and the Game can then start', async () => {
+    const log = vi.mocked(console.log);
+    h.failWordLoads = 1;
+    const client = await play();
+    client.send('init', INIT);
+    await flush();
+    expect(client.sent).toContainEqual(['state', 'restart']);
+    expect(log).toHaveBeenCalledWith('failed to load words', expect.any(Error));
+
+    client.send('startLevel', 3);
+    await flush();
+    expect(client.sent).toContainEqual(['state', 'sReady']);
+
+    client.sent.length = 0;
+    client.send('state', 'cReady');
+    expect(client.sent).toContainEqual(['state', 'play']);
   });
 });
