@@ -14,7 +14,6 @@ vi.mock('../schema/index.js', () => {
     }
   }
   return {
-    Game: { updateOne: vi.fn(() => Promise.resolve()) },
     Word: { aggregate: vi.fn(() => Promise.resolve([{ word: 'acid' }, { word: 'rain' }])) },
     Player: { exists: vi.fn() },
     Score,
@@ -24,7 +23,7 @@ vi.mock('../schema/index.js', () => {
 vi.mock('../lib/achievements.js', () => ({ awardAchievements: vi.fn(() => Promise.resolve([])) }));
 
 import { awardAchievements } from '../lib/achievements.js';
-import { Player } from '../schema/index.js';
+import { Player, Word } from '../schema/index.js';
 import Game from './Game.js';
 
 const PLAYER_ID = '64f1c2d3e4a5b6c7d8e9f0a1';
@@ -513,5 +512,123 @@ describe('a paused Game', () => {
 
     expect(game.status()).toBeTruthy();
     expect(game.resume()).toBe(false);
+  });
+});
+
+describe('the Level bonus', () => {
+  beforeEach(() => {
+    saved.length = 0;
+    Player.exists.mockReset();
+  });
+
+  test('is not paid for quitting before a Level is cleared', async () => {
+    const game = new Game(makeClient(undefined), 10);
+    game.bonus = 9 * 850;
+    game.start();
+
+    game.stop();
+    game.recordScore();
+    await flush();
+
+    expect(saved[0].score).toBe(10);
+  });
+
+  test('is paid once, when the first Level is cleared', async () => {
+    const game = new Game(makeClient(undefined), 10);
+    game.bonus = 9 * 850;
+    game.start();
+    game.levelClear();
+    game.start();
+    game.levelClear();
+
+    game.recordScore();
+    await flush();
+
+    expect(saved[0].score).toBe(10 + 9 * 850);
+  });
+
+  test('does not carry into the next Game', async () => {
+    const game = new Game(makeClient(undefined), 10);
+    game.bonus = 9 * 850;
+    game.resetGame();
+    game.start();
+    game.levelClear();
+
+    game.recordScore();
+    await flush();
+
+    expect(saved[0].score).toBe(10);
+  });
+});
+
+describe('a Game in progress', () => {
+  test('is one whose first Level has started and that has not been reset', () => {
+    const game = new Game(makeClient(undefined), 1);
+    expect(game.inProgress).toBe(false);
+
+    game.start();
+    expect(game.inProgress).toBe(true);
+    game.levelClear();
+    expect(game.inProgress).toBe(true);
+
+    game.stop();
+    game.resetGame();
+    expect(game.inProgress).toBe(false);
+  });
+});
+
+describe('typing a word', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  test('does not count before the browser can draw it', async () => {
+    const client = makeClient(undefined);
+    const game = new Game(client, 1);
+    const submit = client.on.mock.calls.find(([event]) => event === 'game')[1];
+    await vi.advanceTimersByTimeAsync(0); // words loaded
+    game.start();
+    await vi.advanceTimersByTimeAsync(2_000); // the first word appears, at y 1
+    const [word] = game.getState().position;
+    expect(word.y).toBe(1);
+
+    submit(word.word);
+    expect(game.getState()).toMatchObject({ correct: 0, incorrect: 1 });
+
+    await vi.advanceTimersByTimeAsync(2_000); // now at y 2, drawn
+    submit(word.word);
+    expect(game.getState().correct).toBe(1);
+  });
+});
+
+describe('loading words', () => {
+  afterEach(() => {
+    Word.aggregate.mockReset();
+    Word.aggregate.mockImplementation(() => Promise.resolve([{ word: 'acid' }, { word: 'rain' }]));
+  });
+
+  test('a database error sends the browser back to Level select instead of ending the process', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    Word.aggregate.mockReturnValueOnce(Promise.reject(new Error('db down')));
+    const client = makeClient(undefined);
+
+    const game = new Game(client, 1);
+    await flush();
+
+    expect(client.emit).toHaveBeenCalledWith('state', 'restart');
+    expect(game.ready).toBe(false);
+    expect(log).toHaveBeenCalledWith('failed to load words', expect.any(Error));
+    log.mockRestore();
+  });
+
+  test('asks the database only once while a sample is on its way', async () => {
+    Word.aggregate.mockClear();
+    const game = new Game(makeClient(undefined), 1);
+    game.stop();
+    game.stop();
+    game.stop();
+    await flush();
+
+    expect(Word.aggregate).toHaveBeenCalledTimes(1);
+    expect(game.ready).toBe(true);
   });
 });

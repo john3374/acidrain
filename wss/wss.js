@@ -10,6 +10,12 @@ const MIN_LEVEL = 1;
 const MAX_LEVEL = 10;
 const CLIENT_ID_PATTERN = /^[a-z0-9_-]{6,80}$/i;
 const ALLOWED_STATES = new Set(['cReady', 'play', 'pause', 'resume', 'gameover']);
+// Each socket may send a burst of EVENT_BURST messages, refilled at EVENT_RATE a second. Play needs a few a second.
+const EVENT_BURST = 40;
+const EVENT_RATE = 20;
+// No message the browser sends is more than a few hundred bytes.
+const MAX_MESSAGE_BYTES = 16 * 1024;
+const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
 const clampLevel = value => {
   const level = Number(value);
@@ -57,6 +63,44 @@ if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
 
 const isAllowedOrigin = origin => !origin || allowedOrigins.includes(origin);
 
+const getPositiveInteger = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+// A classroom can share one address, so the cap is generous; it stops one machine opening thousands of Games.
+const maxConnectionsPerIp = getPositiveInteger(process.env.WEBSOCKET_MAX_CONNECTIONS_PER_IP, 100);
+const connectionsByIp = new Map();
+
+// Behind nginx every socket comes from loopback, and nginx sets X-Real-IP. Anyone else's header is ignored.
+const clientIp = req => {
+  const remote = req.socket?.remoteAddress ?? '';
+  const forwarded = req.headers['x-real-ip'];
+  return LOOPBACK_ADDRESSES.has(remote) && typeof forwarded === 'string' && forwarded ? forwarded : remote;
+};
+
+// Token bucket over a socket's incoming messages. A socket that floods is disconnected.
+const limitEvents = client => {
+  let tokens = EVENT_BURST;
+  let last = Date.now();
+  let flooded = false;
+  client.use((_packet, next) => {
+    // Messages already buffered when the socket was cut are dropped quietly.
+    if (flooded) return;
+    const now = Date.now();
+    tokens = Math.min(EVENT_BURST, tokens + ((now - last) / 1000) * EVENT_RATE);
+    last = now;
+    if (tokens < 1) {
+      flooded = true;
+      console.log(client.id, 'sent too many messages; disconnecting');
+      client.disconnect(true);
+      return;
+    }
+    tokens -= 1;
+    next();
+  });
+};
+
 if (!process.env.NEXTAUTH_SECRET) {
   console.warn('NEXTAUTH_SECRET is not set: every socket will play as a Guest');
 }
@@ -64,9 +108,15 @@ if (!process.env.NEXTAUTH_SECRET) {
 const server = http.createServer();
 const io = new Server(server, {
   cors: { origin: allowedOrigins, methods: ['GET', 'POST'], credentials: true },
-  allowRequest: (req, callback) => callback(null, isAllowedOrigin(req.headers.origin)),
+  maxHttpBufferSize: MAX_MESSAGE_BYTES,
+  allowRequest: (req, callback) => {
+    if (!isAllowedOrigin(req.headers.origin)) return callback(null, false);
+    callback(null, (connectionsByIp.get(clientIp(req)) ?? 0) < maxConnectionsPerIp);
+  },
 });
-const games = {};
+// One Game per socket, keyed by the server's socket id. The browser's clientId is only a label (the page-load ID),
+// so another socket that learns it can't reach this Game.
+const games = new Map();
 
 // Identity comes only from the NextAuth session cookie (ADR 0002). A socket without a valid one is a Guest.
 io.use(async (socket, next) => {
@@ -80,7 +130,10 @@ io.use(async (socket, next) => {
 });
 
 io.on('connection', client => {
-  console.log(client.id, client.handshake.address, client.playerId ? 'player' : 'guest');
+  const ip = clientIp(client.request);
+  connectionsByIp.set(ip, (connectionsByIp.get(ip) ?? 0) + 1);
+  limitEvents(client);
+  console.log(client.id, ip, client.playerId ? 'player' : 'guest');
   // Old tabs still send `login` with a player id. Identity is resolved from the session cookie, so the payload is ignored.
   client.on('login', () => {});
   client.on('init', payload => {
@@ -91,25 +144,28 @@ io.on('connection', client => {
     }
 
     const { clientId, width, charWidth, level } = parsed;
+    const game = games.get(client.id);
+    // A Game in progress keeps its Level and its board.
+    if (game?.inProgress) return;
     client.width = width;
     client.charWidth = charWidth;
-    if (!client.gameId) client.gameId = clientId;
-    const game = games[client.gameId];
+    // The page-load ID saved with Guest Scores; set once per socket.
+    client.gameId ??= clientId;
     if (game) {
       if (!game.ready) game.stop();
       game.resetGame();
       game.level = level;
     } else {
-      client.gameId = clientId;
-      games[clientId] = new Game(client, level);
+      games.set(client.id, new Game(client, level));
     }
   });
   client.on('startLevel', value => {
     const level = clampLevel(value);
     if (!level) return;
 
-    const game = games[client.gameId];
-    if (game) {
+    const game = games.get(client.id);
+    // Choosing a Level mid-Game would carry the Game's Score into a new Level bonus.
+    if (game && !game.inProgress) {
       game.resetGame();
       game.level = level;
       game.score = 10;
@@ -119,12 +175,12 @@ io.on('connection', client => {
   });
   client.on('state', cmd => {
     if (!ALLOWED_STATES.has(cmd)) {
-      console.log('unknown cmd', cmd);
+      console.log(client.id, 'unknown cmd of type', typeof cmd);
       return;
     }
 
     console.log(client.gameId, 'state', cmd);
-    const game = games[client.gameId];
+    const game = games.get(client.id);
     if (game == null) {
       client.emit('state', 'restart');
       return;
@@ -148,32 +204,40 @@ io.on('connection', client => {
         break;
       case 'gameover':
         client.emit('state', 'gameover');
-        game.stop();
-        game.recordScore();
+        // Quitting before the first Level starts finishes nothing: no Score, no new Word sample.
+        if (game.inProgress) {
+          game.stop();
+          game.recordScore();
+        }
         game.resetGame();
         client.emit('game', game.getState());
         break;
     }
   });
+  const endGame = () => {
+    games.get(client.id)?.abandon();
+    games.delete(client.id);
+  };
   client.on('error', err => {
-    games[client.gameId]?.abandon();
-    delete games[client.gameId];
+    endGame();
     console.log(err);
   });
   client.on('disconnect', reason => {
-    console.log('reason', reason);
-    games[client.gameId]?.abandon();
-    delete games[client.gameId];
-    console.log(Object.keys(games));
-    console.log(io.engine.clientsCount);
+    endGame();
+    const left = (connectionsByIp.get(ip) ?? 1) - 1;
+    if (left > 0) connectionsByIp.set(ip, left);
+    else connectionsByIp.delete(ip);
+    console.log(client.id, 'disconnected:', reason, '- games:', games.size, 'sockets:', io.engine.clientsCount);
   });
 });
 
 const port = Number(process.env.WEBSOCKET_PORT || process.env.PORT || 4000);
+// Only nginx (on this host) should reach the server. Set WEBSOCKET_HOST=0.0.0.0 to test from another device.
+const host = process.env.WEBSOCKET_HOST || '127.0.0.1';
 
 connectDB()
   .then(() => {
-    server.listen(port, () => console.log(`server running at http://localhost:${port}`));
+    server.listen(port, host, () => console.log(`server running at http://${host}:${port}`));
   })
   .catch(err => {
     console.error('failed to connect to database', err);

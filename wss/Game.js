@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import mongoose from 'mongoose';
 import { inGameAchievements } from '../game/achievements.js';
 import { awardAchievements } from '../lib/achievements.js';
-import { Game as GameDB, Player, Score, Word } from '../schema/index.js';
+import { Player, Score, Word } from '../schema/index.js';
 
 const { ObjectId } = mongoose.Types;
 
@@ -58,6 +58,8 @@ class Game {
   #dropDue;
   #dropLeft;
   #pausesLeft;
+  // A Word sample is on its way: asking again before it arrives would only queue more database work.
+  #loadingWords = false;
 
   constructor(client, level = 1) {
     this.#client = client;
@@ -79,14 +81,6 @@ class Game {
     this.#scoreRecorded = false;
     this.#flawlessClear = false;
     this.bonus = 0;
-    GameDB.updateOne(
-      { gameId: client.gameId },
-      { $set: { correct: this.correct, incorrect: this.incorrect, life: this.life, seed: this.#random.getSeed(), score: this.score } },
-      { upsert: true },
-    ).catch(err => {
-      console.log('failed to upsert game');
-      console.log(err);
-    });
     client.on('game', word => {
       const submitted = typeof word === 'string' ? word.trim() : '';
       if (!submitted || submitted.length > 100) return;
@@ -94,7 +88,8 @@ class Game {
       if (this.#paused) return;
 
       for (let i = 0; i < this.#position.length; i++) {
-        if (this.#position[i].word === submitted) {
+        // A word counts once the browser can draw it (it hides words until y > 1), so a script can't type it first.
+        if (this.#position[i].word === submitted && this.#position[i].y > 1) {
           this.#position.splice(i--, 1);
           this.correct++;
           this.score += submitted.length * 10 + 20;
@@ -109,11 +104,21 @@ class Game {
   }
 
   #populateWords() {
-    if (!this.ready)
-      Word.aggregate([{ $unwind: '$word' }, { $sample: { size: 20 } }, { $project: { _id: 0 } }]).then(words => {
+    if (this.ready || this.#loadingWords) return;
+    this.#loadingWords = true;
+    Word.aggregate([{ $unwind: '$word' }, { $sample: { size: 20 } }, { $project: { _id: 0 } }])
+      .then(words => {
         this.words = words.map(w => w.word);
         this.ready = true;
         this.#client.emit('state', 'sReady');
+      })
+      // Without this a database error is an unhandled rejection, which ends the process and every Game on it.
+      .catch(err => {
+        console.log('failed to load words', err);
+        this.#client.emit('state', 'restart');
+      })
+      .finally(() => {
+        this.#loadingWords = false;
       });
   }
   #checkOverlap(word, begin, end) {
@@ -203,9 +208,17 @@ class Game {
   levelClear() {
     // 무결점: a Level of 5 or higher cleared with no Typo and no word landing (a landing costs pH).
     if (this.level >= 5 && this.incorrect === this.#levelTypos && this.life === this.#levelLife) this.#flawlessClear = true;
+    // The Level bonus for starting above Level 1 is paid only once a Level is cleared, never for quitting.
+    this.score += this.bonus;
+    this.bonus = 0;
     this.level++;
     this.#client.emit('game', this.getState());
     this.stop();
+  }
+
+  // A Game has started its first Level and hasn't been reset since. Only such a Game can finish with a Score.
+  get inProgress() {
+    return this.#started !== undefined;
   }
 
   getState() {
@@ -253,10 +266,6 @@ class Game {
     this.#paused = false;
     this.#position = [];
     this.ready = false;
-    if (this.bonus > 0) {
-      this.score += this.bonus;
-      this.bonus = 0;
-    }
     this.#populateWords();
   }
 
@@ -264,12 +273,6 @@ class Game {
     if (this.#scoreRecorded) return;
     this.#scoreRecorded = true;
     const sequence = ++this.#finished;
-
-    GameDB.updateOne(
-      { gameId: this.#client.gameId },
-      { $set: { correct: this.correct, incorrect: this.incorrect, life: this.life, score: this.score } },
-      { upsert: true },
-    ).catch(err => console.log('failed to update game', err));
 
     // Capture the Game's numbers now: the caller resets the Game right after this returns.
     const game = {
@@ -341,6 +344,7 @@ class Game {
 
   resetGame() {
     this.score = 10;
+    this.bonus = 0;
     this.correct = 0;
     this.incorrect = 0;
     this.life = 18;
