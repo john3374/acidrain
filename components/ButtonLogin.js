@@ -97,9 +97,10 @@ const ButtonLogin = () => {
                   <button
                     type="button"
                     className="button"
-                    onClick={() => {
+                    onClick={async () => {
+                      // Delete while the session cookie still exists; signing out first would drop it.
+                      await update({ delete: 1 });
                       signOut();
-                      update({ delete: 1 });
                     }}
                   >
                     탈퇴
