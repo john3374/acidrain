@@ -6,6 +6,36 @@ import { connectDB } from '@/db';
 import { Achievement, Player, Score } from '@/schema';
 import { validateNickname } from '@/lib/nickname';
 
+// A Player is found by email, so only an address the provider has confirmed may sign in to one.
+const githubEmailVerified = async (email, accessToken) => {
+  if (!accessToken) return false;
+  try {
+    const res = await fetch('https://api.github.com/user/emails', {
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/vnd.github+json' },
+    });
+    if (!res.ok) return false;
+    const emails = await res.json();
+    return Array.isArray(emails) && emails.some(e => e?.verified === true && e.email?.toLowerCase() === email.toLowerCase());
+  } catch (err) {
+    console.log('failed to check GitHub email', err);
+    return false;
+  }
+};
+
+const hasVerifiedEmail = async (user, account, profile) => {
+  if (typeof user?.email !== 'string' || !user.email.includes('@')) return false;
+  switch (account?.provider) {
+    case 'google':
+      return profile?.email_verified === true;
+    case 'discord':
+      return profile?.verified === true;
+    case 'github':
+      return githubEmailVerified(user.email, account.access_token);
+    default:
+      return false;
+  }
+};
+
 const handler = NextAuth({
   // logger: {
   //   error(code, metadata) {
@@ -34,7 +64,8 @@ const handler = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user }) {
+    async signIn({ user, account, profile }) {
+      if (!(await hasVerifiedEmail(user, account, profile))) return false;
       await connectDB();
       const updatedUser = await Player.findOneAndUpdate({ email: user.email }, {}, { upsert: true, new: true });
       user.nickname = updatedUser.nickname;
@@ -65,11 +96,14 @@ const handler = NextAuth({
           const parsed = validateNickname(params.session.nickname);
           if (!parsed.valid) return { ...params.token };
 
-          await connectDB();
-          params.token.nickname = parsed.value;
-          Player.findOneAndUpdate({ email: params.token.email }, { $set: { nickname: parsed.value } }).catch(err =>
-            console.log('failed to change nickname', err)
-          );
+          // The session shows the new nickname only once the database has taken it (it is unique).
+          try {
+            await connectDB();
+            await Player.updateOne({ email: params.token.email }, { $set: { nickname: parsed.value } });
+            params.token.nickname = parsed.value;
+          } catch (err) {
+            console.log('failed to change nickname', err);
+          }
         }
       }
       return { ...params.token };
