@@ -8,14 +8,21 @@
   },
   "pnpm": {
     "overrides": {
-      "postcss": "8.5.16",
-      "uuid": "11.1.1"
+      "postcss": "^8.5.23",
+      "uuid": "11.1.1",
+      "engine.io": "^6.6.10",
+      "socket.io-parser": "^4.2.7",
+      "nanoid@3": "^3.3.18",
+      "browserslist": "^4.28.7",
+      "source-map-js": "^1.2.2",
+      "baseline-browser-mapping": "^2.11.0",
+      "postcss-selector-parser@6": "^6.1.5"
     }
   },
   "scripts": {
     "dev": "next dev -p 4001",
     "build": "next build",
-    "start": "next start -p 4001",
+    "start": "next start -p 4001 -H 127.0.0.1",
     "lint": "eslint .",
     "test": "vitest run",
     "wss": "node wss/wss",
@@ -29,24 +36,24 @@
     "clsx": "^2.1.1",
     "dotenv": "^16.6.1",
     "lucide-react": "^0.447.0",
-    "mongoose": "^8.24.1",
-    "next": "16.2.10",
-    "next-auth": "^4.24.14",
+    "mongoose": "^8.24.11",
+    "next": "16.4.5",
+    "next-auth": "^4.24.15",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "reactjs-popup": "^2.0.6",
-    "sharp": "^0.33.5",
-    "socket.io": "^4.8.3",
-    "socket.io-client": "^4.8.3",
+    "sharp": "^0.35.5",
+    "socket.io": "^4.8.4",
+    "socket.io-client": "^4.8.4",
     "tailwind-merge": "^2.6.1",
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "autoprefixer": "^10.5.2",
     "eslint": "^9.39.4",
-    "eslint-config-next": "16.2.10",
+    "eslint-config-next": "16.4.5",
     "jsdom": "^30.1.1",
-    "postcss": "^8.5.16",
+    "postcss": "^8.5.23",
     "tailwindcss": "^3.4.19",
     "vitest": "^5.0.2"
   }
