@@ -14,10 +14,9 @@ const getLimit = () => getPositiveInteger(process.env.RATE_LIMIT_REQUESTS, DEFAU
 const getWindowMs = () => getPositiveInteger(process.env.RATE_LIMIT_WINDOW_MS, DEFAULT_WINDOW_MS, { max: 60 * 60 * 1000 });
 const getMaxBuckets = () => getPositiveInteger(process.env.RATE_LIMIT_MAX_BUCKETS, DEFAULT_MAX_BUCKETS, { max: 100000 });
 
-const getClientIp = req => {
-  const forwardedFor = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
-  return req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || forwardedFor || 'unknown';
-};
+// nginx overwrites X-Real-IP with the peer address. Other headers (CF-Connecting-IP, the first X-Forwarded-For hop)
+// arrive from the client unchanged, so trusting them would let every request pick a fresh bucket.
+const getClientIp = req => req.headers.get('x-real-ip') || 'unknown';
 
 const pruneExpiredBuckets = now => {
   for (const [key, bucket] of buckets) {
